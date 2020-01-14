@@ -290,8 +290,14 @@ void Store::InitMysql() {
     database = mysql.get("database", "").asString();
     port = mysql.get("port", 0).asInt();
 
+	LOG(ERROR) << "InitMysql host: " << host;
+	LOG(ERROR) << "InitMysql username: " << username;
+	LOG(ERROR) << "InitMysql password: " << password;
+	LOG(ERROR) << "InitMysql database: " << database;
+	LOG(ERROR) << "InitMysql port: " << port;
+	
     mysql_ = mysql_init(NULL);
-    std::string real_passwd = real_password(password);
+    std::string real_passwd = password;
     if (!mysql_real_connect(mysql_, host.c_str(), username.c_str(), real_passwd.c_str(), database.c_str(), port, NULL, 0))
         show_mysql_error(mysql_);
 
@@ -325,11 +331,16 @@ void Store::InitMongo() {
     username = mongo.get("username", "").asString();
     password = mongo.get("password", "").asString();
 
+	LOG(ERROR) << "InitMongo host: " << host;
+	LOG(ERROR) << "InitMongo port: " << port;
+	LOG(ERROR) << "InitMongo username: " << username;
+	LOG(ERROR) << "InitMongo password: " << password;
+
     char uri[128];
     if (!username.length() || !password.length()) {
         sprintf(uri, "mongodb://%s:%d", host.c_str(), port);
     } else {
-        std::string real_passwd = real_password(password);
+        std::string real_passwd = password;
         sprintf(uri, "mongodb://%s:%s@%s:%d/?authSource=kkcoin", username.c_str(), real_passwd.c_str(), host.c_str(), port);
     }
 

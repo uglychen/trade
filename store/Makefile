@@ -10,7 +10,7 @@
 CC=gcc
 CXX=g++
 RM=rm -f
-CPPFLAGS=-g -Wall -std=gnu++11 -I../base -I../include -I../include/hiredis -I../include/libmongoc -I../include/libbson
+CPPFLAGS=-g -Wall -std=gnu++11 -D_GLIBCXX_USE_CXX11_ABI=0 -I../base -I../include -I../include/hiredis -I../include/libmongoc -I../include/libbson
 LDFLAGS=-L../lib
 LDLIBS=-ljsoncpp -lhiredis -lmariadbclient -lmongoc -lbson -lpthread -ldl -lssl -lcrypto -lresolv -lsasl2 -lrt
 

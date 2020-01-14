@@ -72,7 +72,7 @@ bool Statistics::Init() {
             m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
         }
 
-        if (m_redis == NULL) {
+        if (m_stat_redis == NULL) {
             LOG(ERROR) << "m_stat_redis connect faild";
             exit(1);
         }else{
@@ -689,7 +689,7 @@ bool Statistics::SendAllTicker(){
 			m_stat_redis = redisConnect(it->first.c_str(), it->second) ; 		 
 		}
 		
-		if (m_redis == NULL) {
+		if (m_stat_redis == NULL) {
 			LOG(ERROR) << "m_redis connect faild";
 			exit(1);
 		}else{
@@ -761,7 +761,7 @@ bool Statistics::SendAllTicker(){
             	m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
         	}
 
-        	if (m_redis == NULL) {
+        	if (m_stat_redis == NULL) {
             	LOG(ERROR) << "m_stat_redis connect faild";
             	exit(1);
         	}else{
@@ -880,7 +880,7 @@ bool Statistics::Msg(string statistics_str){
 			m_stat_redis = redisConnect(it->first.c_str(), it->second) ; 		 
 		}
 		
-		if (m_redis == NULL) {
+		if (m_stat_redis == NULL) {
 			LOG(ERROR) << "m_redis connect faild";
 			exit(1);
 		}else{

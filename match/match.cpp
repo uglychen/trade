@@ -159,10 +159,10 @@ bool Match::Init() {
 
 		//m_index_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
         for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
-            m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
+            m_index_redis = redisConnect(it->first.c_str(), it->second) ;          
         }
 
-        if (m_stat_redis == NULL) {
+        if (m_index_redis == NULL) {
             LOG(ERROR) << "m_index_redis connect faild";
             exit(1);
         }else{
