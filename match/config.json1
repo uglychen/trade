@@ -1,0 +1,66 @@
+{
+    "consumermq" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "amq.direct",
+        "routing_key" : "order1",
+        "queue" : "order1"
+    },
+    "producermq" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "amq.direct",
+        "routing_key" : "stat1",
+        "queue" : "stat1"
+    },
+    "redis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "mymaster",
+        "password" : "",
+        "database" : 0
+    },
+    "statRedis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "mymaster",
+        "password" : "",
+        "database" : 0
+    },
+    "indexRedis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "mymaster",
+        "password" : "",
+        "database" : 0
+    },
+    "lockRedis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "mymaster",
+        "password" : "",
+        "database" : 0
+    }
+}

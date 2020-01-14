@@ -104,13 +104,21 @@ bool Match::Init() {
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
 
-		m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
-		if (m_redis == NULL) {
-			LOG(ERROR) << "m_redis connect faild";
-        	exit(1);
-		}
+		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
+
+        if (m_redis == NULL) {
+            LOG(ERROR) << "m_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_redis connect ok" << std::endl;
+            LOG(ERROR) << "m_redis connect ok";
+        }
 	}
 	
 	{
@@ -121,13 +129,21 @@ bool Match::Init() {
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
+		
+		//m_stat_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+        for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
 
-		m_stat_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
-		if (m_stat_redis == NULL) {
-			LOG(ERROR) << "m_stat_redis connect faild";
-        	exit(1);
-		}
+        if (m_stat_redis == NULL) {
+            LOG(ERROR) << "m_stat_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_stat_redis connect ok" << std::endl;
+            LOG(ERROR) << "m_stat_redis connect ok";
+        }
 	}
 
 	{
@@ -138,13 +154,21 @@ bool Match::Init() {
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
 
-		m_index_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
-		if (m_index_redis == NULL) {
-			LOG(ERROR) << "m_index_redis connect faild";
-        	exit(1);
-		}
+		//m_index_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+        for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
+
+        if (m_stat_redis == NULL) {
+            LOG(ERROR) << "m_index_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_index_redis connect ok" << std::endl;
+            LOG(ERROR) << "m_index_redis connect ok";
+        }
 	}
 	
 	LOG(INFO) << "redis ok";

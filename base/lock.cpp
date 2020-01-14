@@ -38,12 +38,22 @@ void CloseRedis() {
 
 void ReconnectRedis() {
     CloseRedis();
-    g_redis_context = SentinelRedisConnect(g_sentinels, g_master_name, g_redis_password, g_redis_database);
+    //g_redis_context = SentinelRedisConnect(g_sentinels, g_master_name, g_redis_password, g_redis_database);
+
+    for (auto it = g_sentinels.begin(); it != g_sentinels.end(); ++it) {
+        g_redis_context = redisConnect(it->first.c_str(), it->second) ; 
+		LOG(INFO) << it->first.c_str();
+		LOG(INFO) << it->second;
+    }
+    
     if (g_redis_context == NULL) {
         LOG(INFO) << "lock redis connect failed!";
         exit(1);
+    }else{
+        LOG(INFO) << "redis connect!!!!";
     }
 }
+
 
 bool InitLock(std::vector<std::pair<std::string, int> > sentinels, const char* master_name, const char * password, int database) {
     assert(g_redis_context == NULL);

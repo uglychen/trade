@@ -10,7 +10,7 @@
 CC=gcc
 CXX=g++
 RM=rm -f
-CPPFLAGS=-g -Wall -std=gnu++11 -I../base -I../include -I../include/librabbitmq -I../include/hiredis
+CPPFLAGS=-g -Wall -std=gnu++11  -D_GLIBCXX_USE_CXX11_ABI=0 -I../base -I../include -I../include/librabbitmq -I../include/hiredis
 LDFLAGS=-L../lib
 LDLIBS=-lrabbitmq -ljsoncpp -lhiredis -lssl -lcrypto
 
