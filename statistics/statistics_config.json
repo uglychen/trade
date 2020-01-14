@@ -1,0 +1,85 @@
+{
+    "server_id" : 1,
+    "consumermq" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "amq.direct",
+        "routing_key" : "stat1",
+        "queue" : "stat1"
+    },
+    "producermq_order_book" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "book.fanout",
+        "routing_key" : "",
+        "queue" : ""
+    },
+    "producermq_order_change" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "order.fanout",
+        "routing_key" : "",
+        "queue" : ""
+    },
+    "producermq_trade" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "trade.fanout",
+        "routing_key" : "",
+        "queue" : ""
+    },
+    "producermq_kline" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "kline.fanout",
+        "routing_key" : "",
+        "queue" : ""
+    },
+    "producermq_ticker" : {
+        "host" : "192.168.200.118",
+        "port" : 5672,
+        "vhost" : "/kk",
+        "username" : "guest",
+        "password" : "guest",
+        "exchange" : "ticker.fanout",
+        "routing_key" : "",
+        "queue" : ""
+    },
+    "redis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "21_7379_master",
+        "password" : "",
+        "database" : 0
+    },
+    "statRedis" : {
+        "sentinels" : [
+            {
+                "host" : "192.168.200.118",
+                "port" : 6379
+            }
+        ],
+        "master_name": "",
+        "password" : "",
+        "database" : 0
+    }
+}

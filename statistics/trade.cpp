@@ -269,10 +269,13 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     vhost = config.get("vhost", "").asString();
     username = config.get("username", "").asString();
     encode_password = config.get("password", "").asString();
-    password = real_password(encode_password);
+    //password = real_password(encode_password);
+	password = encode_password;
     exchange = config.get("exchange", "").asString();
     routing_key = config.get("routing_key", "").asString();
     queue = config.get("queue", "").asString();
+
+	LOG(ERROR) << "InitMQ: exchange " << exchange;
 
     conn = amqp_new_connection();
 
@@ -307,6 +310,6 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring exchange");
     }
     
-    LOG(INFO) << "mq ok";
+    LOG(ERROR) << "mq ok";
     return conn;
 }
