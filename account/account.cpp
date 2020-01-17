@@ -396,6 +396,7 @@ bool Account::SettleAccount(){
 
 bool Account::Msg(string account_str){
 	LOG(INFO) << account_str;
+    LOG(ERROR) << " received msg from mq： "<<account_str;
 	
 	if (m_redis) {
 		redisReply* reply = (redisReply*) redisCommand(m_redis, "INFO");
@@ -415,7 +416,8 @@ bool Account::Msg(string account_str){
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
 
 		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
         for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
