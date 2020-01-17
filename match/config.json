@@ -22,7 +22,7 @@
     "redis" : {
         "sentinels" : [
             {
-                "host" : "192.168.200.118",
+                "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
                 "port" : 6379
             }
         ],
@@ -33,7 +33,7 @@
     "statRedis" : {
         "sentinels" : [
             {
-                "host" : "192.168.200.118",
+                "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
                 "port" : 6379
             }
         ],
@@ -44,7 +44,7 @@
     "indexRedis" : {
         "sentinels" : [
             {
-                "host" : "192.168.200.118",
+                "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
                 "port" : 6379
             }
         ],
@@ -55,7 +55,7 @@
     "lockRedis" : {
         "sentinels" : [
             {
-                "host" : "192.168.200.118",
+                "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
                 "port" : 6379
             }
         ],
