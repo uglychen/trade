@@ -1996,6 +1996,9 @@ bool Match::DeleteOrder(){
 }
 
 bool Match::NewOrder(){
+
+	LOG(INFO)<< "NewOrder!!!!!!!" ;
+	
 	PreLock();
 	if (!PrepareForOrder()) return false;
 	
@@ -2092,6 +2095,7 @@ bool Match::Msg(string order_str){
 	if (!InitOrder(order_str)) return false;
 	bool res;
 	if (m_msg_type == "order"){
+		LOG << "  m_msg_type == order";
 		res = NewOrder();
 	}else if (m_msg_type == "cancel"){
 		res = CancelOrder();

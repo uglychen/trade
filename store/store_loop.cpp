@@ -146,8 +146,15 @@ void StoreLoop::RunSlowCheck() {
     LOG(INFO) << "Enter RunSlowCheck";
     for (;;) {
         if (redis_ == NULL) {
+			if (redis_ != NULL){
+				LOG(INFO) << "redis_ connetct faild !  ReconnectRedis";
+			}
             ReconnectRedis();
         }
+
+		if (redis_ != NULL){
+			LOG(INFO) << "redis_ connetct ok !!!!!";
+		}
 
         redisReply* reply;
         std::string message;
@@ -239,8 +246,6 @@ void StoreLoop::ReconnectRedis() {
     std::vector<std::pair<std::string, int> > sentinels;
     for (unsigned i = 0; i < sentinel_config.size(); ++i) {
         sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
-		LOG(ERROR) << "ReconnectRedis :" << sentinel_config[i]["host"].asString();
-		LOG(ERROR) << "ReconnectRedis :" << sentinel_config[i]["port"].asInt();
     }
     std::string encode_password = redis_config["password"].asString();
     //std::string password = real_password(encode_password);
@@ -248,7 +253,14 @@ void StoreLoop::ReconnectRedis() {
 
     //redis_ = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
     for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
-        redis_ = redisConnect(it->first.c_str(), it->second) ;          
+        redis_ = redisConnect(it->first.c_str(), it->second) ;  
+		LOG(INFO) << "ReconnectRedis :" << it->first.c_str();
+		LOG(INFO) << "ReconnectRedis :" << it->second;
+
+		if(redis_ != NULL && redis_->err)
+     	{
+         	LOG(INFO) << "connection error1111111111111111:" << redis_->errstr;
+     	}
     }
 
     if (redis_ == NULL) {
