@@ -42,8 +42,8 @@ void ReconnectRedis() {
 
     for (auto it = g_sentinels.begin(); it != g_sentinels.end(); ++it) {
         g_redis_context = redisConnect(it->first.c_str(), it->second) ; 
-		LOG(INFO) << it->first.c_str();
-		LOG(INFO) << it->second;
+		LOG(INFO) << "ReconnectRedis:" << it->first.c_str();
+		LOG(INFO) << "ReconnectRedis:" << it->second;
     }
     
     if (g_redis_context == NULL) {

@@ -153,10 +153,20 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     vhost = config.get("vhost", "").asString();
     username = config.get("username", "").asString();
     encode_password = config.get("password", "").asString();
-    password = real_password(encode_password);
+    //password = real_password(encode_password);
+    password = encode_password;
     exchange = config.get("exchange", "").asString();
     routing_key = config.get("routing_key", "").asString();
     queue = config.get("queue", "").asString();
+
+    LOG(ERROR) << "InitMQ : " << host;
+    LOG(ERROR) << "InitMQ : " << port;
+    LOG(ERROR) << "InitMQ : " << vhost;
+    LOG(ERROR) << "InitMQ : " << username;
+    LOG(ERROR) << "InitMQ : " << encode_password;
+    LOG(ERROR) << "InitMQ : " << exchange;
+    LOG(ERROR) << "InitMQ : " << routing_key;
+    LOG(ERROR) << "InitMQ : " << queue;
 
     conn = amqp_new_connection();
 

@@ -1,0 +1,66 @@
+{
+  "consumermq" : {
+    "host" : "3.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "amq.direct",
+    "routing_key" : "account",
+    "queue" : "account"
+  },
+  "producermq" : {
+    "host" : "3.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "amq.direct",
+    "routing_key" : "stat1",
+    "queue" : "stat1"
+  },
+  "redis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "mymaster",
+    "password" : "",
+    "database" : 0
+  },
+  "statRedis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "mymaster",
+    "password" : "",
+    "database" : 0
+  },
+  "indexRedis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "mymaster",
+    "password" : "",
+    "database" : 0
+  },
+  "lockRedis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "mymaster",
+    "password" : "",
+    "database" : 0
+  }
+}

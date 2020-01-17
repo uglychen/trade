@@ -1,0 +1,85 @@
+{
+  "server_id" : 1,
+  "consumermq" : {
+    "host" : "3.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "amq.direct",
+    "routing_key" : "stat1",
+    "queue" : "stat1"
+  },
+  "producermq_order_book" : {
+    "host" : "3.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "book.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
+  "producermq_order_change" : {
+    "host" : "13.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "order.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
+  "producermq_trade" : {
+    "host" : "3.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "trade.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
+  "producermq_kline" : {
+    "host" : "13.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "kline.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
+  "producermq_ticker" : {
+    "host" : "13.0.146.140",
+    "port" : 5672,
+    "vhost" : "kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "ticker.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
+  "redis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "",
+    "password" : "",
+    "database" : 0
+  },
+  "statRedis" : {
+    "sentinels" : [
+      {
+        "host" : "redis.ika3y0.ng.0001.apse1.cache.amazonaws.com",
+        "port" : 6379
+      }
+    ],
+    "master_name": "",
+    "password" : "",
+    "database" : 0
+  }
+}

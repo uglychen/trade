@@ -64,11 +64,18 @@ bool Account::Init() {
 		std::string encode_password = redis_config["password"].asString();
 		std::string password = real_password(encode_password);
 
-		m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
-		if (m_redis == NULL) {
-			LOG(INFO) << "redis connect failed!";
-			exit(1);
-		}
+		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+        for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_redis = redisConnect(it->first.c_str(), it->second) ;
+        }
+
+        if (m_redis == NULL) {
+            LOG(ERROR) << "m_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_redis connect ok" << std::endl;
+            LOG(INFO) << "m_redis connect ok";
+        }
 	}
 
 	LOG(INFO) << "redis ok";
@@ -409,7 +416,11 @@ bool Account::Msg(string account_str){
 		std::string encode_password = redis_config["password"].asString();
 		std::string password = real_password(encode_password);
 
-		m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+        for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_redis = redisConnect(it->first.c_str(), it->second) ;
+        }
+
 		if (m_redis == NULL) {
 			LOG(INFO) << "redis connect failed!";
 			exit(1);
