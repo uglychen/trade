@@ -3,7 +3,7 @@
   "consumermq" : {
     "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "amq.direct",
@@ -13,7 +13,7 @@
   "producermq_order_book" : {
     "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "book.fanout",
@@ -21,9 +21,9 @@
     "queue" : ""
   },
   "producermq_order_change" : {
-    "host" : "13.0.146.140",
+    "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "order.fanout",
@@ -33,7 +33,7 @@
   "producermq_trade" : {
     "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "trade.fanout",
@@ -41,9 +41,9 @@
     "queue" : ""
   },
   "producermq_kline" : {
-    "host" : "13.0.146.140",
+    "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "kline.fanout",
@@ -51,9 +51,9 @@
     "queue" : ""
   },
   "producermq_ticker" : {
-    "host" : "13.0.146.140",
+    "host" : "3.0.146.140",
     "port" : 5672,
-    "vhost" : "kk",
+    "vhost" : "/kk",
     "username" : "admin",
     "password" : "mmcex_pwd",
     "exchange" : "ticker.fanout",
