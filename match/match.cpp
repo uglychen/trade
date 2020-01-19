@@ -463,7 +463,10 @@ bool Match::PrepareForOrder(){
 		freeReplyObject(reply3);
 		return false;
 	}
-	
+
+	 LOG(INFO) << "order_user_account_str.c_str(): " << order_user_account_str.c_str();
+	 LOG(INFO) << "m_order_quote_asset: " << m_order_quote_asset;
+
 	if (m_order_op == ORDER_SIDE_BUY) {
 		if (!order_user_account_json.isMember(m_order_quote_asset)){
 			LOG(ERROR) << "m_order_id:" << m_order_id << " available not enough";

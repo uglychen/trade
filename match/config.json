@@ -2,7 +2,7 @@
     "consumermq" : {
         "host" : "3.0.146.140",
         "port" : 5672,
-        "vhost" : "kk",
+        "vhost" : "/kk",
         "username" : "admin",
         "password" : "mmcex_pwd",
         "exchange" : "amq.direct",
@@ -12,7 +12,7 @@
     "producermq" : {
         "host" : "3.0.146.140",
         "port" : 5672,
-        "vhost" : "kk",
+        "vhost" : "/kk",
         "username" : "admin",
         "password" : "mmcex_pwd",
         "exchange" : "amq.direct",

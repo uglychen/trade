@@ -159,6 +159,8 @@ void StoreLoop::RunSlowCheck() {
         redisReply* reply;
         std::string message;
 
+        LOG(INFO) << "pending_queue_.c_str(): " << pending_queue_.c_str() ;
+        LOG(INFO) << "failure_queue_.c_str(): " << failure_queue_.c_str() ;
         reply = (redisReply*)redisCommand(redis_, "RPOPLPUSH %s %s", pending_queue_.c_str(), failure_queue_.c_str());
         if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
             if (reply) {

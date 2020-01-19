@@ -234,6 +234,7 @@ bool Account::WriteRedis(){
 	
 	string result;
 	result = Json::writeString(writer, m_user_account);
+	LOG(INFO)<< "SET account_user: " << result.c_str();
 	if (redisFormatCommand(&redis_cmd, "SET account_user_%d %s", m_user_id, result.c_str()) <= 0){
 		LOG(ERROR) << "redis format error";
 		return false;
@@ -396,7 +397,7 @@ bool Account::SettleAccount(){
 
 bool Account::Msg(string account_str){
 	LOG(INFO) << account_str;
-    LOG(ERROR) << " received msg from mq： "<<account_str;
+    LOG(ERROR) << " received msg from mq： "<< account_str;
 	
 	if (m_redis) {
 		redisReply* reply = (redisReply*) redisCommand(m_redis, "INFO");

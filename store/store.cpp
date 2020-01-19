@@ -482,6 +482,8 @@ bool Store::BulkInsertOrder(Json::Value& value) {
         goto failure;
     }
 
+    LOG(INFO) << "sql.c_str()=====>: " << sql.c_str();
+
     if (mysql_stmt_prepare(stmt, sql.c_str(), sql.length())) {
         goto stmt_failure;
     }
