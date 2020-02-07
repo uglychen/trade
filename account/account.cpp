@@ -67,7 +67,8 @@ bool Account::Init() {
 
 		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
         for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
-            m_redis = redisConnect(it->first.c_str(), it->second) ;
+            //m_redis = redisConnect(it->first.c_str(), it->second) ;
+            m_redis = redis_connect(it->first.c_str(), it->second, password.c_str()) ; 
         }
 
         if (m_redis == NULL) {
@@ -422,7 +423,8 @@ bool Account::Msg(string account_str){
 
 		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
         for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
-            m_redis = redisConnect(it->first.c_str(), it->second) ;
+            //m_redis = redisConnect(it->first.c_str(), it->second) ;
+            m_redis = redis_connect(it->first.c_str(), it->second, password.c_str()) ; 
         }
 
 		if (m_redis == NULL) {

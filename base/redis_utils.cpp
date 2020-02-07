@@ -144,3 +144,52 @@ ERROR:
 
     return NULL;
 }
+
+redisContext *redis_connect(const char *ip, unsigned int port, const char *passwd)
+{
+    redisContext *c = NULL;
+    redisReply *replay = NULL;
+    
+    /*connect*/
+    c = redisConnect(ip, port);
+    if(c==NULL)
+    {
+        printf("Error: redisConnect() error!\n");
+        LOG(INFO) << "Error: redisConnect() error! " ;
+        return NULL;
+    }
+    if(c->err != 0) 
+    {
+        printf("Error: %s\n", c->errstr);
+        LOG(INFO) << "Error: redisConnect() error! " << c->errstr ; 
+        redisFree(c);
+    }
+    
+    /*auth if passwd is not NULL*/
+    if(passwd != NULL)
+    {
+        replay  = (redisReply *)redisCommand(c, "AUTH %s", passwd);
+        if( replay == NULL)
+        {
+            printf("Error: AUTH error!\n");
+            LOG(INFO) << "Error: AUTH error!! " ;
+            redisFree(c);
+            printf("redisFree\n");
+            LOG(INFO) << "redisFree! " ;
+            return NULL;
+        }
+        if( !(replay->type==REDIS_REPLY_STATUS && memcmp(replay->str, "OK", 2)==0) )
+        {
+            printf("Error: AUTH error!\n");
+            LOG(INFO) << "Error: AUTH error!! " ;
+            freeReplyObject(replay);
+            redisFree(c);
+            printf("redisFree\n");
+            LOG(INFO) << "redisFree!! " ;
+            return NULL;
+        }
+    }
+    
+    return c; /*connect success*/
+
+}

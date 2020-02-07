@@ -255,7 +255,9 @@ void StoreLoop::ReconnectRedis() {
 
     //redis_ = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
     for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
-        redis_ = redisConnect(it->first.c_str(), it->second) ;  
+        //redis_ = redisConnect(it->first.c_str(), it->second) ;  
+        redis_ = redis_connect(it->first.c_str(), it->second, password.c_str()) ; 
+        
 		LOG(INFO) << "ReconnectRedis :" << it->first.c_str();
 		LOG(INFO) << "ReconnectRedis :" << it->second;
 
