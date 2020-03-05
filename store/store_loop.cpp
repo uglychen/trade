@@ -66,7 +66,8 @@ void StoreLoop::Run() {
             }
             continue;
         } else if (reply->type == REDIS_REPLY_STRING) {
-            message = reply->str;
+            message = reply->str; 
+            LOG(INFO) <<"========== message:   " << message;
         } else if (reply->type == REDIS_REPLY_NIL) {
             message = "";
         } else {

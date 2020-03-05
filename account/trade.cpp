@@ -180,7 +180,7 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
         die("opening TCP socket");
     }
 
-    die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
+    die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
     amqp_channel_open(conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 

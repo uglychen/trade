@@ -99,6 +99,11 @@ class Match {
 		long double	m_order_amt;								//订单数量
 		string		m_order_ip;									//订单ip
 		int			m_order_source;								//订单来源
+
+		int m_is_subscribe;	
+		int m_unfreeze_status;
+		string m_first_unfreeze_at;
+		string m_second_unfreeze_at;
 		
 		long double	m_min_order_amount;							//当前交易对最小下单量
 		long double	m_max_order_amount;							//当前交易对最大下单量
@@ -113,6 +118,9 @@ class Match {
 		long double m_usd_cny_value;							//usd/cny汇率数值
 		int 		m_usd_cny_timestamp;						//usd/cny汇率时间
 		
+		long double	m_price_base_asset_GLA; ////base_asset/GLA价格
+		long double	m_price_quote_asset_GLA;
+
 		long double	m_remain_amount;							//当前订单剩余数量（未达成交易）
 		long double	m_executed_quote_amount;					//当前订单成交额
 };
