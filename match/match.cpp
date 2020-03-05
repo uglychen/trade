@@ -1510,23 +1510,43 @@ bool Match::SettleTrade(){
 		tmp_obj["update_at"] = m_time_now;
 		
 		//买方基础货币 abcd
-		tmp_obj["user_id"] = atoi(buy_user.c_str());
-		tmp_obj["asset"] = m_order_base_asset;
-		tmp_obj["change_available"] = m_trade_list[i]["amount"].asString();
-		tmp_obj["change_frozen"] = switch_f_to_s(0);
-		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["available"].asString()) +  switch_s_to_f(tmp_obj["change_available"].asString()));
-		tmp_obj["new_frozen"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"].asString()) + switch_s_to_f(tmp_obj["change_frozen"].asString()));
-		tmp_obj["jnl_type"] = USER_ACCOUNT_JNL_BUY;
-		tmp_obj["remark"] = "买入";
-		tmp_obj["new_encode_available"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_available"].asString());
-		tmp_obj["new_encode_frozen"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_frozen"].asString());
-		
-		m_user_account[buy_user]["funds"][m_order_base_asset]["available"] = tmp_obj["new_available"].asString();
-		m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"] = tmp_obj["new_frozen"].asString();
-		m_user_account[buy_user]["funds"][m_order_base_asset]["encode_available"] = tmp_obj["new_encode_available"].asString();
-		m_user_account[buy_user]["funds"][m_order_base_asset]["encode_frozen"] = tmp_obj["new_encode_frozen"].asString();
-		
-		m_order_result_list.append(tmp_obj);
+		if(m_is_subscribe == 0){
+			tmp_obj["user_id"] = atoi(buy_user.c_str());
+			tmp_obj["asset"] = m_order_base_asset;
+			tmp_obj["change_available"] = m_trade_list[i]["amount"].asString();
+			tmp_obj["change_frozen"] = switch_f_to_s(0);
+			tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["available"].asString()) +  switch_s_to_f(tmp_obj["change_available"].asString()));
+			tmp_obj["new_frozen"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"].asString()) + switch_s_to_f(tmp_obj["change_frozen"].asString()));
+			tmp_obj["jnl_type"] = USER_ACCOUNT_JNL_BUY;
+			tmp_obj["remark"] = "买入";
+			tmp_obj["new_encode_available"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_available"].asString());
+			tmp_obj["new_encode_frozen"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_frozen"].asString());
+			
+			m_user_account[buy_user]["funds"][m_order_base_asset]["available"] = tmp_obj["new_available"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"] = tmp_obj["new_frozen"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["encode_available"] = tmp_obj["new_encode_available"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["encode_frozen"] = tmp_obj["new_encode_frozen"].asString();
+			
+			m_order_result_list.append(tmp_obj);
+		}else{
+			tmp_obj["user_id"] = atoi(buy_user.c_str());
+			tmp_obj["asset"] = m_order_base_asset;
+			tmp_obj["change_available"] = switch_f_to_s(0);
+			tmp_obj["change_frozen"] = m_trade_list[i]["amount"].asString();
+			tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["available"].asString()) +  switch_s_to_f(tmp_obj["change_available"].asString()));
+			tmp_obj["new_frozen"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"].asString()) + switch_s_to_f(tmp_obj["change_frozen"].asString()));
+			tmp_obj["jnl_type"] = USER_ACCOUNT_JNL_BUY;
+			tmp_obj["remark"] = "买入";
+			tmp_obj["new_encode_available"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_available"].asString());
+			tmp_obj["new_encode_frozen"] = HmacSha256Encode(tmp_obj["user_id"].asString() + m_order_base_asset + tmp_obj["new_frozen"].asString());
+			
+			m_user_account[buy_user]["funds"][m_order_base_asset]["available"] = tmp_obj["new_available"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["frozen"] = tmp_obj["new_frozen"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["encode_available"] = tmp_obj["new_encode_available"].asString();
+			m_user_account[buy_user]["funds"][m_order_base_asset]["encode_frozen"] = tmp_obj["new_encode_frozen"].asString();
+			
+			m_order_result_list.append(tmp_obj);
+		}
 		
 		//买方定价货币 mmc
 		tmp_obj["user_id"] = atoi(buy_user.c_str());

@@ -31,6 +31,10 @@ class Account {
 		bool QueryUserAccount();
 		bool WriteRedis();
 		bool SettleAccount();
+
+		bool TradeQueryUserAccount();
+		//bool TradeWriteRedis();
+		bool TradeSettleAccount();
 		
 		Trade* m_trade;										//trade
 		redisContext* m_redis;								//redis连接
@@ -52,6 +56,13 @@ class Account {
 		int			m_jnl_type;
 		int			m_op_id;
 		string		m_remark;
+
+		int m_is_trans;
+		int m_trade_user_id;
+		long double m_trade_amount;
+		Json::Value	m_trade_user_account;
+		Json::Value m_trade_account_result_list;							
+		vector<string> m_trade_redis_cmd_list;
 };
 
 #endif // ACCOUNT_H_

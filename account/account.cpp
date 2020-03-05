@@ -89,8 +89,11 @@ bool Account::InitAccount(string account_str){
 	
 	lock_key_all.clear();
 	m_redis_cmd_list.clear();
+	m_trade_redis_cmd_list.clear();
 	m_account_result_list.resize(0);
+	m_trade_account_result_list.resize(0);
 	m_user_account = Json::Value::null;
+	m_trade_user_account = Json::Value::null;
 	m_time_now = time(0);
 	
 	Json::CharReaderBuilder rbuilder;
@@ -115,6 +118,22 @@ bool Account::InitAccount(string account_str){
 	m_asset = account_json["asset"].asString();
 	m_amount = switch_s_to_f(account_json["amount"].asString());
 	m_remark = account_json["remark"].asString();
+
+	if(account_json.isMember("is_trans")){
+		m_is_trans = atoi(account_json["is_trans"].asString().c_str());
+		m_trade_user_id = atoi(account_json["trade_user_id"].asString().c_str());
+	}else{
+		m_is_trans = 0;
+	}
+
+	if(m_is_trans == 1){
+		m_trade_amount  = -m_amount;
+	}else{
+		m_trade_amount = 0;
+	}
+
+
+
 	if (m_msg_type == "human"){
 		m_frozen_amount = switch_s_to_f(account_json["frozen_amount"].asString());
 	}else{
@@ -189,6 +208,7 @@ bool Account::QueryUserAccount(){
 		}
 	}
 	string user_account_str = reply->str;
+	LOG(INFO) << "============== user_account_str: "  << user_account_str;
 	freeReplyObject(reply);
 	
 	Json::CharReaderBuilder rbuilder;
@@ -252,10 +272,30 @@ bool Account::WriteRedis(){
 	free(redis_cmd);
 	m_redis_cmd_list.push_back(redis_cmd_str);
 	
+	//add by chenxun
+	result = Json::writeString(writer, m_trade_user_account);
+	LOG(INFO)<< "SET account_user: " << result.c_str();
+	if (redisFormatCommand(&redis_cmd, "SET account_user_%d %s", m_trade_user_id, result.c_str()) <= 0){
+		LOG(ERROR) << "redis format error";
+		return false;
+	}
+	redis_cmd_str = redis_cmd;
+	free(redis_cmd);
+	m_redis_cmd_list.push_back(redis_cmd_str);
+	
+	result = Json::writeString(writer, m_trade_account_result_list);
+	if (redisFormatCommand(&redis_cmd, "LPUSH order_result_list %s", result.c_str()) <= 0){
+		LOG(ERROR) << "redis format error";
+		return false;
+	}
+	redis_cmd_str = redis_cmd;
+	free(redis_cmd);
+	m_redis_cmd_list.push_back(redis_cmd_str);
+	
 	for (int i = 0; i < (int)m_redis_cmd_list.size(); i++){
 		LOG(INFO) << "redis cmd list " << m_redis_cmd_list[i];
 	}
-	
+
 	redisAppendCommand(m_redis, "MULTI");
 	for (int i = 0; i < (int)m_redis_cmd_list.size(); i++){
 		redisAppendFormattedCommand(m_redis, m_redis_cmd_list[i].c_str(), m_redis_cmd_list[i].size());
@@ -286,7 +326,7 @@ bool Account::SettleAccount(){
 	
 	AccountLock(m_user_id);
 	if (!QueryUserAccount()) return false;
-	
+
 	long double change_available = 0L;
 	long double new_available = 0L;
 	long double change_frozen = 0L;
@@ -356,6 +396,13 @@ bool Account::SettleAccount(){
 		tmp_account_result["id"] = m_account_id;
 		tmp_account_result["jnl_type"] = m_jnl_type;
 		tmp_account_result["op_id"] = m_op_id;
+
+		if(m_is_trans == 1){
+			tmp_account_result["is_trans"] = m_is_trans;
+		}else{
+			tmp_account_result["is_trans"] = 0;
+		}		
+
 		m_account_result_list.append(tmp_account_result);
 	}
 	
@@ -388,8 +435,8 @@ bool Account::SettleAccount(){
 	m_user_account[m_asset]["encode_available"] = new_encode_available;
 	m_user_account[m_asset]["encode_frozen"] = new_encode_frozen;
 	
-	if (!WriteRedis()) return false;
-	AccountUnlock(m_user_id);
+	//if (!WriteRedis()) return false;
+	//AccountUnlock(m_user_id);
 	
 	LOG(INFO) << "m_account_id:" << m_account_id << " SettleAccount end";
 	return true;
@@ -435,7 +482,267 @@ bool Account::Msg(string account_str){
 	bool res = true;
 	if (!SettleAccount()){
 		res = false;
+		return false;
 	}
+
+	if (!TradeSettleAccount()){
+		res = false;
+		return false;
+	}
+
+	if (!WriteRedis()) return false;
+
 	AllUnlock();
 	return res;
 }
+
+bool Account::TradeQueryUserAccount(){
+	LOG(INFO) << "m_account_id:" << m_account_id << " TradeQueryUserAccount start";
+	
+	redisReply* reply;
+
+	reply = (redisReply*) redisCommand(m_redis, "GET account_user_%d", m_trade_user_id);
+	if (reply == NULL){
+		LOG(ERROR) << "m_account_id:" << m_account_id << " redis reply null";
+		redisFree(m_redis);
+		m_redis = NULL;
+		return false;
+	}
+	if (reply->type != REDIS_REPLY_STRING){
+		if (reply->type == REDIS_REPLY_NIL && (m_msg_type == "deposit" || m_msg_type == "human" || (m_msg_type == "transfer" && m_jnl_type == 33))){
+			m_trade_user_account[m_asset]["available"] = switch_f_to_s(0);
+			m_trade_user_account[m_asset]["frozen"] = switch_f_to_s(0);
+			freeReplyObject(reply);
+			LOG(INFO) << "m_account_id:" << m_account_id << " TradeQueryUserAccount end";
+			return true;
+		}else{
+			LOG(ERROR) << "m_account_id:" << m_account_id << " redis type error:" << reply->type;
+			freeReplyObject(reply);
+			return false;
+		}
+	}
+	string trade_user_account_str = reply->str;
+	LOG(INFO) << "===========trade_user_account_str: "  << trade_user_account_str;
+
+
+	freeReplyObject(reply);
+	
+	Json::CharReaderBuilder rbuilder;
+	std::unique_ptr<Json::CharReader> const reader(rbuilder.newCharReader());
+	JSONCPP_STRING error;
+	bool ret = reader->parse(trade_user_account_str.c_str(), trade_user_account_str.c_str() + trade_user_account_str.size(), &m_trade_user_account, &error);
+	if (!(ret && error.size() == 0)) {
+		LOG(ERROR) << "m_account_id:" << m_account_id << " json error";
+		return false;
+	}
+	
+	if (!m_trade_user_account.isMember(m_asset)){
+		if (m_msg_type == "deposit" || m_msg_type == "human" || (m_msg_type == "transfer" && m_jnl_type == 33)){
+			m_trade_user_account[m_asset]["available"] = switch_f_to_s(0);
+			m_trade_user_account[m_asset]["frozen"] = switch_f_to_s(0);
+			LOG(INFO) << "m_account_id:" << m_account_id << " TradeQueryUserAccount end";
+			return true;
+		}else{
+			LOG(ERROR) << "m_account_id:" << m_account_id << " no this asset";
+			return false;
+		}
+	}
+	string available = m_trade_user_account[m_asset]["available"].asString();
+	string frozen = m_trade_user_account[m_asset]["frozen"].asString();
+	string encode_available = m_trade_user_account[m_asset]["encode_available"].asString();
+	string encode_frozen = m_trade_user_account[m_asset]["encode_frozen"].asString();
+	if (encode_available != HmacSha256Encode(to_string(m_trade_user_id) + m_asset + available) || encode_frozen != HmacSha256Encode(to_string(m_trade_user_id) + m_asset + frozen)){
+		LOG(ERROR) << "m_account_id:" << m_account_id << " encode balance error";
+		return false;
+	}
+	
+	LOG(INFO) << "m_account_id:" << m_account_id << " TradeQueryUserAccount end";
+	return true;
+}
+
+bool Account::TradeSettleAccount(){
+	LOG(INFO) << "================m_account_id:" << m_account_id << " TradeSettleAccount start";
+
+	AccountLock(m_trade_user_id);
+	if(m_is_trans == 1){
+		if (!TradeQueryUserAccount()) return false;
+	}
+	
+	long double change_available = 0L;
+	long double new_available = 0L;
+	long double change_frozen = 0L;
+	long double new_frozen = 0L;
+	
+	Json::Value tmp_account_result = Json::Value::null;
+	
+	if (m_msg_type == "deposit"){
+		change_available = m_trade_amount;
+		change_frozen = 0L;
+	}else if (m_msg_type == "apply_withdraw"){
+		change_available = -m_trade_amount;
+		change_frozen = m_trade_amount;
+	}else if (m_msg_type == "reject_withdraw"){
+		change_available = m_trade_amount;
+		change_frozen = -m_trade_amount;
+	}else if (m_msg_type == "cancel_withdraw"){
+		change_available = m_trade_amount;
+		change_frozen = -m_trade_amount;
+	}else if (m_msg_type == "withdraw"){
+		change_available = 0L;
+		change_frozen = -m_trade_amount;
+	}else if (m_msg_type == "human"){
+		change_available = m_trade_amount;
+		change_frozen = m_frozen_amount;
+	}else if (m_msg_type == "transfer") {
+		change_available = m_trade_amount;
+		change_frozen = m_frozen_amount;
+	} else {
+		return false;
+	}
+	new_available = switch_s_to_f(m_trade_user_account[m_asset]["available"].asString()) + change_available;
+	new_frozen = switch_s_to_f(m_trade_user_account[m_asset]["frozen"].asString()) + change_frozen;
+	string new_encode_available = HmacSha256Encode(to_string(m_trade_user_id) + m_asset + switch_f_to_s(new_available));
+	string new_encode_frozen = HmacSha256Encode(to_string(m_trade_user_id) + m_asset + switch_f_to_s(new_frozen));
+	if (new_available + EPS < 0 || new_frozen + EPS < 0){
+		LOG(ERROR) << "m_account_id:" << m_account_id << " new_available: " << new_available << " new_frozen: " << new_frozen << " ERROR";
+		return false;
+	}
+	
+	tmp_account_result["type"] = "account";
+	tmp_account_result["id"] = m_account_id;
+	tmp_account_result["user_id"] = m_trade_user_id;
+	tmp_account_result["update_at"] = m_time_now;
+	tmp_account_result["asset"] = m_asset;
+	tmp_account_result["change_available"] = switch_f_to_s(change_available);
+	tmp_account_result["new_available"] = switch_f_to_s(new_available);
+	tmp_account_result["change_frozen"] = switch_f_to_s(change_frozen);
+	tmp_account_result["new_frozen"] = switch_f_to_s(new_frozen);
+	tmp_account_result["jnl_type"] = m_jnl_type;
+	tmp_account_result["remark"] = m_remark;
+	tmp_account_result["new_encode_available"] = new_encode_available;
+	tmp_account_result["new_encode_frozen"] = new_encode_frozen;
+
+	if(m_is_trans == 1){
+		tmp_account_result["is_trans"] = m_is_trans;
+	}else{
+		tmp_account_result["is_trans"] = 0;
+	}
+
+	m_trade_account_result_list.append(tmp_account_result);
+	
+	if (m_msg_type == "apply_withdraw"){
+		tmp_account_result = Json::Value::null;
+		tmp_account_result["type"] = "apply_withdraw";
+		tmp_account_result["id"] = m_account_id;
+		tmp_account_result["amt"] = switch_f_to_s(change_frozen);
+		m_trade_account_result_list.append(tmp_account_result);
+	}
+	
+	if (m_msg_type == "human"){
+		tmp_account_result = Json::Value::null;
+		tmp_account_result["type"] = "human";
+		tmp_account_result["id"] = m_account_id;
+		tmp_account_result["jnl_type"] = m_jnl_type;
+		tmp_account_result["op_id"] = m_op_id;
+
+		if(m_is_trans == 1){
+			tmp_account_result["is_trans"] = m_is_trans;
+		}else{
+			tmp_account_result["is_trans"] = 0;
+		}
+
+		m_trade_account_result_list.append(tmp_account_result);
+	}
+	
+	if (m_msg_type == "deposit" && m_reward_amount > EPS){
+		change_available = m_reward_amount;
+		change_frozen = 0L;
+		new_available += change_available;
+		new_frozen += change_frozen;
+		
+		tmp_account_result["type"] = "account";
+		tmp_account_result["id"] = m_account_id;
+		tmp_account_result["user_id"] = m_trade_user_id;
+		tmp_account_result["update_at"] = m_time_now;
+		tmp_account_result["asset"] = m_asset;
+		tmp_account_result["change_available"] = switch_f_to_s(change_available);
+		tmp_account_result["new_available"] = switch_f_to_s(new_available);
+		tmp_account_result["change_frozen"] = switch_f_to_s(change_frozen);
+		tmp_account_result["new_frozen"] = switch_f_to_s(new_frozen);
+		tmp_account_result["jnl_type"] = USER_ACCOUNT_JNL_DEPOSIT_SEND;
+		tmp_account_result["remark"] = "充值赠送";
+		new_encode_available = HmacSha256Encode(to_string(m_trade_user_id) + m_asset + switch_f_to_s(new_available));
+		new_encode_frozen = HmacSha256Encode(to_string(m_trade_user_id) + m_asset + switch_f_to_s(new_frozen));
+		tmp_account_result["new_encode_available"] = new_encode_available;
+		tmp_account_result["new_encode_frozen"] = new_encode_frozen;
+		m_trade_account_result_list.append(tmp_account_result);
+	}
+	
+	m_trade_user_account[m_asset]["available"] = switch_f_to_s(new_available);
+	m_trade_user_account[m_asset]["frozen"] = switch_f_to_s(new_frozen);
+	m_trade_user_account[m_asset]["encode_available"] = new_encode_available;
+	m_trade_user_account[m_asset]["encode_frozen"] = new_encode_frozen;
+	
+	//if (!TradeWriteRedis()) return false;
+	//AccountUnlock(m_trade_user_id);
+	
+	LOG(INFO) << "===================m_account_id:" << m_account_id << " TradeSettleAccount end";
+	return true;
+}
+
+
+/*bool Account::TradeWriteRedis(){
+	LOG(INFO) << "m_account_id:" << m_account_id << " TradeWriteRedis start";
+	
+	Json::StreamWriterBuilder writer;
+	writer["indentation"] = "";
+	char *redis_cmd;
+	
+	string result;
+	result = Json::writeString(writer, m_trade_user_account);
+	LOG(INFO)<< "SET account_user: " << result.c_str();
+	if (redisFormatCommand(&redis_cmd, "SET account_user_%d %s", m_trade_user_id, result.c_str()) <= 0){
+		LOG(ERROR) << "redis format error";
+		return false;
+	}
+	string redis_cmd_str = redis_cmd;
+	free(redis_cmd);
+	m_trade_redis_cmd_list.push_back(redis_cmd_str);
+	
+	result = Json::writeString(writer, m_trade_account_result_list);
+	if (redisFormatCommand(&redis_cmd, "LPUSH order_result_list %s", result.c_str()) <= 0){
+		LOG(ERROR) << "redis format error";
+		return false;
+	}
+	redis_cmd_str = redis_cmd;
+	free(redis_cmd);
+	m_trade_redis_cmd_list.push_back(redis_cmd_str);
+	
+	for (int i = 0; i < (int)m_trade_redis_cmd_list.size(); i++){
+		LOG(INFO) << "redis cmd list " << m_trade_redis_cmd_list[i];
+	}
+	
+	redisAppendCommand(m_redis, "MULTI");
+	for (int i = 0; i < (int)m_trade_redis_cmd_list.size(); i++){
+		redisAppendFormattedCommand(m_redis, m_trade_redis_cmd_list[i].c_str(), m_trade_redis_cmd_list[i].size());
+	}
+	redisAppendCommand(m_redis, "EXEC");
+	redisReply* temp_reply = NULL;
+	for (int i = 0; i < (int)m_trade_redis_cmd_list.size() + 2; i++){
+		redisGetReply(m_redis, (void**)&temp_reply);
+		if (temp_reply == NULL) {
+			LOG(ERROR) << "m_redis reply null";
+			redisFree(m_redis);
+			m_redis = NULL;
+			return false;
+		}
+		if (temp_reply->type == REDIS_REPLY_ERROR){
+			LOG(ERROR) << "redis error:" << temp_reply->str;
+		}
+		freeReplyObject(temp_reply);
+		temp_reply = NULL;
+	}
+	
+	LOG(INFO) << "m_account_id:" << m_account_id << " TradeWriteRedis end";
+	return true;
+}*/

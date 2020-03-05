@@ -127,6 +127,11 @@ struct JNL_DATA {
     char jnl_id_ind;
 };
 
+struct TRANS_DATA {
+    char order_id[32];
+    char order_id_ind;
+};
+
 struct LOCK_DATA {
     int lock_id;
     char lock_id_ind;
@@ -163,6 +168,8 @@ bool Store::DoWork(Json::Value& values) {
     Json::Value jnls = Json::Value(Json::arrayValue);
     Json::Value locks = Json::Value(Json::arrayValue);
 
+    Json::Value trans = Json::Value(Json::arrayValue);
+
     for (unsigned i = 0; i < values.size(); i++) {
         std::string type = values[i]["type"].asString();
         if (type == "order") {
@@ -194,6 +201,13 @@ bool Store::DoWork(Json::Value& values) {
             } else {
                 jnls.append(values[i]);
             }
+
+            //修改t_otc_order表的state字段
+            int is_trans = values[i]["is_trans"].asInt();
+            if(is_trans == 1){
+                trans.append(values[i]);
+            }
+
         } else {
             LOG(ERROR) << "Unknown Type: " << type;
         }
@@ -237,6 +251,13 @@ bool Store::DoWork(Json::Value& values) {
             goto failure;
         }
     }
+
+    if (trans.size()) {
+        if (!BulkUpdateTrans(trans)) {
+            goto failure;
+        }
+    }
+
     if (locks.size()) {
         if (!BulkUpdateLock(locks)) {
             goto failure;
@@ -954,6 +975,73 @@ bool Store::BulkUpdateJnl(Json::Value& value) {
     bind[0].u.indicator = &data[0].jnl_id_ind;
 
     std::string sql = "UPDATE t_jnl_other SET status=1 WHERE txno=?";
+
+    MYSQL_STMT* stmt = mysql_stmt_init(mysql_);
+    if (!stmt) {
+        goto failure;
+    }
+
+    if (mysql_stmt_prepare(stmt, sql.c_str(), sql.length())) {
+        goto stmt_failure;
+    }
+
+    mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+    mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+
+    if (mysql_stmt_bind_param(stmt, bind)) {
+        goto stmt_failure;
+    }
+
+    if (mysql_stmt_execute(stmt)) {
+        goto stmt_failure;
+    }
+
+    //assert(mysql_stmt_affected_rows(stmt) == values.size());
+
+    mysql_stmt_close(stmt);
+
+    free(data);
+    free(bind);
+    return true;
+
+stmt_failure:
+    show_stmt_error(stmt);
+    mysql_stmt_close(stmt);
+
+failure:
+    free(data);
+    free(bind);
+    return false;
+}
+
+bool Store::BulkUpdateTrans(Json::Value& value) {
+    Json::Value values = Json::Value(Json::arrayValue);
+    if (value.isArray()) {
+        values = value;
+    } else {
+        values.append(value);
+    }
+
+    TRANS_DATA* data = (TRANS_DATA*)malloc(sizeof(TRANS_DATA) * values.size());
+    memset(data, 0, sizeof(TRANS_DATA) * values.size());
+    unsigned int array_size = values.size();
+    size_t row_size = sizeof(TRANS_DATA);
+
+    for (unsigned i = 0; i < values.size(); i++) {
+        strcpy(data[i].order_id, values[i]["id"].asCString());
+        LOG(INFO) << "=========data[i].order_id========" << data[i].order_id;
+        data[i].order_id_ind = STMT_INDICATOR_NTS;
+    }
+
+    MYSQL_BIND* bind = (MYSQL_BIND*)malloc(sizeof(MYSQL_BIND) * 1);
+    memset(bind, 0, sizeof(MYSQL_BIND) * 1);
+
+    // string
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)&data[0].order_id;
+    bind[0].u.indicator = &data[0].order_id_ind;
+
+    std::string sql = "UPDATE t_otc_orders SET state=2 WHERE order_id=?";
 
     MYSQL_STMT* stmt = mysql_stmt_init(mysql_);
     if (!stmt) {
