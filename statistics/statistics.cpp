@@ -4,6 +4,22 @@
 #include "utils.h"
 #include "redis_utils.h"
 
+#include <stdio.h>  
+#include <time.h>  
+#include <string>
+using namespace std;
+
+std::string get_date(long long time){
+    time_t t = time;
+    struct tm *p;
+    p=gmtime(&t);
+    char s[100];
+    strftime(s, sizeof(s), "%Y-%m-%d", p);
+    std::string tmp(s);
+    return tmp;
+}
+
+
 string switch_f_to_s(long double f){
 	char st[1024];
 	snprintf(st, sizeof(st), "%.*Lf", VALUE_DECIMAL, f);
@@ -388,6 +404,7 @@ bool Statistics::SendOneTicker(string pair_key){
 	m_quote_asset = pair_key.substr(pos + 1);
 	
 	redisReply* reply;
+	LOG(INFO) << "pair_key: " << pair_key;
 	reply = (redisReply*) redisCommand(m_stat_redis, "HGET trade_config_%s state", pair_key.c_str());
 	if (reply == NULL){
 		LOG(ERROR) << "redis reply null";
@@ -410,6 +427,7 @@ bool Statistics::SendOneTicker(string pair_key){
 	
 	long double open_price = 0L;
 	int open_timestamp = 0;
+	LOG(INFO) << "pair_key : " << pair_key;
 	reply = (redisReply*) redisCommand(m_stat_redis, "HMGET trade_config_%s open_price open_timestamp", pair_key.c_str());
 	if (reply == NULL){
 		LOG(ERROR) << "redis reply null";
@@ -613,6 +631,59 @@ bool Statistics::SendOneTicker(string pair_key){
 		}
 	}
 	freeReplyObject(reply);
+
+	//add by chenxun
+	LOG(INFO) << " =========  m_base_asset:   "  << m_base_asset.c_str();
+	LOG(INFO) << " =========  m_quote_asset:  " <<  m_quote_asset.c_str();
+
+	reply = (redisReply*) redisCommand(m_stat_redis, "ZRANGE kline_1d_%s_%s -1 -1", m_base_asset.c_str(), m_quote_asset.c_str());
+	if (reply == NULL){
+		LOG(ERROR) << "redis reply null";
+		redisFree(m_stat_redis);
+		m_stat_redis = NULL;
+		return false;
+	}
+	if (reply->type != REDIS_REPLY_ARRAY){
+		LOG(ERROR) << " redis type error:" << reply->type;
+		freeReplyObject(reply);
+		return false;
+	}
+
+	long double open = 0L;
+	long double k_time = 0L;
+	if (reply->elements == 1){
+		Json::Value tmp_kline_1d_json;
+		string tmp_kline_1d_str = reply->element[0]->str;
+		freeReplyObject(reply);
+		bool ret = reader->parse(tmp_kline_1d_str.c_str(), tmp_kline_1d_str.c_str() + tmp_kline_1d_str.size(), &tmp_kline_1d_json, &error);
+		if (!(ret && error.size() == 0)) {
+			LOG(ERROR) << "json error";
+			return false;
+		}
+
+		//LOG(INFO) << " =========  开盘时间戳 :  "  << tmp_kline_1d_json["time"].asString().c_str();
+		open = strtold(tmp_kline_1d_json["open"].asString().c_str(), NULL);
+		k_time = atoi(tmp_kline_1d_json["time"].asString().c_str());
+		LOG(INFO) << " =========  	open:   "  << open;
+		//LOG(INFO) << " =========  k_time:  "  << k_time;
+
+		std::string date1 = get_date(k_time);
+		//LOG(INFO) << " =========  date1:  "  << date1;
+		time_t time_now = time(NULL);
+    	std::string date2 = get_date(time_now);
+    	//LOG(INFO) << " =========  date2:  "  << date2;
+    	if ( date1 == date2){
+			LOG(INFO) << " =====获取今日开盘价====  open:  " <<   open;	
+    	}else{
+    		LOG(INFO) << " date1 != date2  ";	
+    		open = 0L;
+    	}
+
+	}else{
+		freeReplyObject(reply);
+	}
+
+
 	if (m_quote_asset == "bitCNY"){
 		price_base_bitCNY = price_now;
 	}else if (m_quote_asset == "ETH"){
@@ -644,13 +715,16 @@ bool Statistics::SendOneTicker(string pair_key){
 	ticker_json["ask"] = ask;
 	ticker_json["ask_amount"] = ask_amount;
 	ticker_json["price_base_bitCNY"] = switch_f_to_s(price_base_bitCNY);
+	ticker_json["price_open"] = switch_f_to_s(open);
 	
 	Json::StreamWriterBuilder writer;
 	writer["indentation"] = "";
 	string result = Json::writeString(writer, ticker_json);
 	m_trade->SendMessage(result, "ticker");
 	
-	reply = (redisReply*) redisCommand(m_stat_redis, "HMSET ticker_%s_%s price_now %s price_change_amount %s price_change_percent %s price_high %s price_low %s base_amount %s quote_amount %s bid %s bid_amount %s ask %s ask_amount %s price_base_bitCNY %s", m_base_asset.c_str(), m_quote_asset.c_str(), ticker_json["price_now"].asString().c_str(), ticker_json["price_change_amount"].asString().c_str(), ticker_json["price_change_percent"].asString().c_str(), ticker_json["price_high"].asString().c_str(), ticker_json["price_low"].asString().c_str(), ticker_json["base_amount"].asString().c_str(), ticker_json["quote_amount"].asString().c_str(), ticker_json["bid"].asString().c_str(), ticker_json["bid_amount"].asString().c_str(), ticker_json["ask"].asString().c_str(), ticker_json["ask_amount"].asString().c_str(), ticker_json["price_base_bitCNY"].asString().c_str());
+	LOG(INFO) << " ====ticker_json[price_open].asString().c_str():  " <<   ticker_json["price_open"].asString().c_str();	
+	reply = (redisReply*) redisCommand(m_stat_redis, "HMSET ticker_%s_%s price_open %s price_now %s price_change_amount %s price_change_percent %s price_high %s price_low %s base_amount %s quote_amount %s bid %s bid_amount %s ask %s ask_amount %s price_base_bitCNY %s", 
+		m_base_asset.c_str(), m_quote_asset.c_str(), ticker_json["price_open"].asString().c_str(), ticker_json["price_now"].asString().c_str(), ticker_json["price_change_amount"].asString().c_str(), ticker_json["price_change_percent"].asString().c_str(), ticker_json["price_high"].asString().c_str(), ticker_json["price_low"].asString().c_str(), ticker_json["base_amount"].asString().c_str(), ticker_json["quote_amount"].asString().c_str(), ticker_json["bid"].asString().c_str(), ticker_json["bid_amount"].asString().c_str(), ticker_json["ask"].asString().c_str(), ticker_json["ask_amount"].asString().c_str(), ticker_json["price_base_bitCNY"].asString().c_str());
 	if (reply == NULL) {
 		redisFree(m_stat_redis);
 		m_stat_redis = NULL;
@@ -888,7 +962,7 @@ bool Statistics::Msg(string statistics_str){
 		}
 
 	}
-
+    
 	if (!Reposition()) return false;
 	
 	if (!InitStatistics(statistics_str)) return false;

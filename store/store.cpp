@@ -39,8 +39,22 @@ struct ORDER_DATA {
     char source_ind;
     char ip[128];
     char ip_ind;
+
     MYSQL_TIME created_at;
     char created_at_ind;
+
+    char is_subscribe;
+    char is_subscribe_ind;
+
+    char unfreeze_status;
+    char unfreeze_status_ind;
+
+    char first_unfreeze_at[30];
+    char first_unfreeze_at_ind;
+
+    char second_unfreeze_at[30];
+    char second_unfreeze_at_ind;
+
 };
 
 struct TRADE_DATA {
@@ -341,9 +355,9 @@ void Store::InitMongo() {
         sprintf(uri, "mongodb://%s:%d", host.c_str(), port);
     } else {
         std::string real_passwd = password;
-        sprintf(uri, "mongodb://%s:%s@%s:%d/?authSource=kkcoin", username.c_str(), real_passwd.c_str(), host.c_str(), port);
+        sprintf(uri, "mongodb://%s:%s@%s:%d/?authSource=admin", username.c_str(), real_passwd.c_str(), host.c_str(), port);
     }
-
+    LOG(INFO) << "================================uri:  " << uri;
     mongo_ = mongoc_client_new(uri);
     if (!mongo_)
         die("Failed to parse URI");
@@ -396,6 +410,24 @@ bool Store::BulkInsertOrder(Json::Value& value) {
         if (t == 0) {
             t = values[i]["update_at"].asInt64();
         }
+
+
+        data[i].is_subscribe = values[i]["is_subscribe"].asInt();
+        data[i].is_subscribe_ind = STMT_INDICATOR_NONE;
+        data[i].unfreeze_status = values[i].get("unfreeze_status", 0).asInt();
+        data[i].unfreeze_status_ind = STMT_INDICATOR_NONE;
+        strcpy(data[i].first_unfreeze_at, values[i].get("first_unfreeze_at", "2020-03-02 00:00:00").asCString());
+        data[i].first_unfreeze_at_ind = STMT_INDICATOR_NTS;
+        strcpy(data[i].second_unfreeze_at, values[i].get("second_unfreeze_at", "2020-03-02 00:00:00").asCString());
+        data[i].second_unfreeze_at_ind = STMT_INDICATOR_NTS;
+
+        //LOG(INFO) << "data[i].source: " << data[i].source;
+        //LOG(INFO) << "is_subscribe: " << data[i].is_subscribe;
+        //LOG(INFO) << "is_subscribe: " << values[i].get("is_subscribe", 0).asInt();
+        //LOG(INFO) << "unfreeze_status: " << data[i].unfreeze_status;
+        //LOG(INFO) << "first_unfreeze_at: " << data[i].first_unfreeze_at;
+        //LOG(INFO) << "second_unfreeze_at: " << data[i].second_unfreeze_at;
+
         struct tm local_time = {0};
         localtime_r(&t, &local_time);
         data[i].created_at.year = local_time.tm_year + 1900;
@@ -407,8 +439,8 @@ bool Store::BulkInsertOrder(Json::Value& value) {
         data[i].created_at_ind = STMT_INDICATOR_NONE;     
     }
 
-    MYSQL_BIND* bind = (MYSQL_BIND*)malloc(sizeof(MYSQL_BIND) * 15);
-    memset(bind, 0, sizeof(MYSQL_BIND) * 15);
+    MYSQL_BIND* bind = (MYSQL_BIND*)malloc(sizeof(MYSQL_BIND) * 19);
+    memset(bind, 0, sizeof(MYSQL_BIND) * 19);
 
     // string
     bind[0].buffer_type = MYSQL_TYPE_STRING;
@@ -466,16 +498,47 @@ bool Store::BulkInsertOrder(Json::Value& value) {
     bind[13].buffer_type = MYSQL_TYPE_STRING;
     bind[13].buffer = (void*)&data[0].ip;
     bind[13].u.indicator = &data[0].ip_ind;
+
     // datetime
     bind[14].buffer_type = MYSQL_TYPE_DATETIME;
     bind[14].buffer = (void*)&data[0].created_at;
     bind[14].u.indicator = &data[0].created_at_ind;
 
+    //tinyint
+    bind[15].buffer_type = MYSQL_TYPE_TINY;
+    bind[15].buffer = (void*)&data[0].is_subscribe;
+    bind[15].u.indicator = &data[0].is_subscribe_ind;
+    
+    // tinyint
+    bind[16].buffer_type = MYSQL_TYPE_TINY;
+    bind[16].buffer = (void*)&data[0].unfreeze_status;
+    bind[16].u.indicator = &data[0].unfreeze_status_ind;
+
+    // string
+    bind[17].buffer_type = MYSQL_TYPE_STRING;
+    bind[17].buffer = (void*)&data[0].first_unfreeze_at;
+    bind[17].u.indicator = &data[0].first_unfreeze_at_ind;
+
+    // string
+    bind[18].buffer_type = MYSQL_TYPE_STRING;
+    bind[18].buffer = (void*)&data[0].second_unfreeze_at;
+    bind[18].u.indicator = &data[0].second_unfreeze_at_ind;
+
     std::string sql = "INSERT INTO t_order (order_id, user_id, base_asset, quote_asset, type, side, price, origin_amount, "
-                      "executed_price, executed_amount, executed_quote_amount, status, source, ip, created_at) "
-                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                      "executed_price, executed_amount, executed_quote_amount, status, source, ip, created_at, "
+                      "is_subscribe, unfreeze_status, first_unfreeze_at, second_unfreeze_at)"
+                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
                       "ON DUPLICATE KEY UPDATE executed_price=VALUES(executed_price), executed_amount=VALUES(executed_amount), "
                       "executed_quote_amount=VALUES(executed_quote_amount), status=VALUES(status), updated_at=VALUES(created_at)";
+
+
+    /*std::string sql = "INSERT INTO t_order (order_id, user_id, base_asset, quote_asset, type, side, price, origin_amount, "
+                  "executed_price, executed_amount, executed_quote_amount, status, source, ip, created_at, "
+                  "is_subscribe)"
+                  "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?) "
+                  "ON DUPLICATE KEY UPDATE executed_price=VALUES(executed_price), executed_amount=VALUES(executed_amount), "
+                  "executed_quote_amount=VALUES(executed_quote_amount), status=VALUES(status), updated_at=VALUES(created_at)";
+    */
 
     MYSQL_STMT* stmt = mysql_stmt_init(mysql_);
     if (!stmt) {
@@ -499,12 +562,14 @@ bool Store::BulkInsertOrder(Json::Value& value) {
         goto stmt_failure;
     }
 
-    //assert(mysql_stmt_affected_rows(stmt) == values.size());
+    //assert(mysql_stmt_affected_rows(stmt) == values.size());BulkInsertOrder
 
     mysql_stmt_close(stmt);
 
     free(data);
     free(bind);
+
+    LOG(INFO) << "=================== BulkInsertOrder INTO t_order: ok!!!!! ===============";
     return true;
 
 stmt_failure:
@@ -654,6 +719,9 @@ bool Store::BulkInsertTrade(Json::Value& value) {
 
     free(data);
     free(bind);
+
+    LOG(INFO) << "=================== BulkInsertTrade INTO t_trade: ok!!!!! ===============";
+
     return true;
 
 stmt_failure:
@@ -999,7 +1067,7 @@ bool Store::BulkInsertJournal(Json::Value& value) {
         values.append(value);
     }
 
-    mongoc_collection_t* collection = mongoc_client_get_collection(mongo_, "kkcoin", "m_journal");
+    mongoc_collection_t* collection = mongoc_client_get_collection(mongo_, "admin", "m_journal");
     if (!collection)
         die("Failed to get collection");
 

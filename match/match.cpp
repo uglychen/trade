@@ -5,6 +5,9 @@
 #include <iostream>
 #include "utils.h"
 #include "redis_utils.h"
+
+#include<math.h>
+
 using namespace std;
 
 string switch_f_to_s(long double f){
@@ -31,6 +34,7 @@ bool CheckDecimal(long double f, int decimal){
 
 bool Match::DiffPrice(long double p1, long double p2){
 	if (p2 < EPS){
+		LOG(INFO) << " ===== 查询现货指数价格  p2 < EPS ";
 		return false;
 	}else{
 		long double diff = p1 / p2 - 1;
@@ -261,7 +265,31 @@ bool Match::InitOrder(string order_str){
 		m_order_amt_str = switch_f_to_s(m_order_amt);
 		m_order_ip = order_json["ip"].asString();
 		m_order_source = order_json["source"].asInt();
-		
+
+		if (!order_json.isMember("is_subscribe")){
+			m_is_subscribe = 0;
+		}else{
+			m_is_subscribe  = order_json["is_subscribe"].asInt();
+		}
+
+		if (!order_json.isMember("unfreeze_status")){
+			m_unfreeze_status = 0;
+		}else{
+			m_unfreeze_status  = order_json["unfreeze_status"].asInt();
+		}
+
+		if (!order_json.isMember("first_unfreeze_at")){
+			m_first_unfreeze_at = "0000-00-00";
+		}else{
+			m_first_unfreeze_at  = order_json["first_unfreeze_at"].asString();
+		}
+
+		if (!order_json.isMember("second_unfreeze_at")){
+			m_second_unfreeze_at = "0000-00-00";
+		}else{
+			m_second_unfreeze_at  = order_json["second_unfreeze_at"].asString();
+		}
+
 		if (m_order_type == ORDER_TYPE_LIMIT) {
 			if (!order_json.isMember("price")){
 				LOG(ERROR) << "json no price";
@@ -392,6 +420,8 @@ bool Match::PrepareForOrder(){
 		redisFree(m_index_redis);
 		m_index_redis = NULL;
 		return false;
+	}else{
+		LOG(INFO) << " ===== 查询现货指数价格 ";
 	}
 
 	m_spot_price = 0.0L;
@@ -422,6 +452,8 @@ bool Match::PrepareForOrder(){
 				return false;
 			}
 		}
+	}else{
+		LOG(INFO) << " ===== 查询现货指数价格 " << m_order_price_limit_high;
 	}
 
 	LOG(INFO) << "m_order_id:" << m_order_id << " query limit price end";
@@ -430,13 +462,30 @@ bool Match::PrepareForOrder(){
 	redisReply* reply2 = NULL;
 	redisReply* reply3 = NULL;
 	
+	LOG(ERROR) << "m_order_base_asset:" << m_order_base_asset;
+	LOG(ERROR) << "m_order_quote_asset:" << m_order_quote_asset;
+
 	redisAppendCommand(m_redis, "GET account_user_%d", m_order_user_id);
 	redisAppendCommand(m_stat_redis, "HMGET trade_config_%s_%s min_amt max_amt amt_decimal price_decimal maker_fee taker_fee state", m_order_base_asset.c_str(), m_order_quote_asset.c_str());
-	redisAppendCommand(m_redis, "HMGET last_trade_price %s_bitCNY %s_bitCNY KK_bitCNY %s_ETH %s_ETH KK_ETH %s_%s ETH_%s ETH_bitCNY ETH_USDT", m_order_base_asset.c_str(), m_order_quote_asset.c_str(), m_order_base_asset.c_str(), m_order_quote_asset.c_str(), m_order_base_asset.c_str(), m_order_quote_asset.c_str(), m_order_quote_asset.c_str());
+	redisAppendCommand(m_redis, "HMGET last_trade_price %s_bitCNY %s_bitCNY KK_bitCNY %s_ETH %s_ETH KK_ETH %s_%s ETH_%s ETH_bitCNY ETH_USDT %s_MMC %s_MMC GLA_MMC", 
+		m_order_base_asset.c_str(), 
+		m_order_quote_asset.c_str(), 
+		m_order_base_asset.c_str(), 
+		m_order_quote_asset.c_str(), 
+		m_order_base_asset.c_str(), 
+		m_order_quote_asset.c_str(), 
+		m_order_quote_asset.c_str(),
+
+		//add by chenxun
+		m_order_base_asset.c_str(),
+		m_order_quote_asset.c_str());
 	
 	redisGetReply(m_redis, (void**)&reply1);
 	redisGetReply(m_stat_redis, (void**)&reply2);
 	redisGetReply(m_redis, (void**)&reply3);
+
+	LOG(INFO) << "redisGetReply: " << m_order_quote_asset;
+
 	Json::Value order_user_account_json = Json::Value::null;
 	if (reply1 == NULL){
 		LOG(ERROR) << "m_order_id:" << m_order_id << " redis reply null";
@@ -749,14 +798,14 @@ bool Match::PrepareForOrder(){
 		return false;
 	}
 	
-	if (m_maker_fee - EPS > 0.002 || m_maker_fee + EPS < -0.002){
+	/*if (m_maker_fee - EPS > 0.002 || m_maker_fee + EPS < -0.002){
 		LOG(INFO) << "m_order_id:" << m_order_id << " m_maker_fee: " << m_maker_fee << " change to 0.001 ";
 		m_maker_fee = 0.001L;
 	}
 	if (m_taker_fee - EPS > 0.002 || m_taker_fee + EPS < -0.002){
 		LOG(INFO) << "m_order_id:" << m_order_id << " m_taker_fee: " << m_taker_fee << " change to 0.001 ";
 		m_taker_fee = 0.001L;
-	}
+	}*/
 	
 	if (!CheckDecimal(m_order_amt, m_amount_decimal)){
 		LOG(ERROR) << "m_order_id:" << m_order_id << " m_order_amt: " << m_order_amt << " m_amount_decimal: " << m_amount_decimal;
@@ -777,6 +826,9 @@ bool Match::PrepareForOrder(){
 	//查询交易对币种和KK的价格
 	LOG(INFO) << "m_order_id:" << m_order_id << " GetAssetPrice start";
 
+	LOG(ERROR) << " ====== m_order_quote_asset:" << m_order_base_asset ;
+	LOG(ERROR) << " ====== m_order_quote_asset:" << m_order_quote_asset ;
+
 	m_price_base_asset_KK = 0L;
 	m_price_quote_asset_KK = 0L;
 	m_price_base_asset_bitCNY = 0L;
@@ -790,6 +842,22 @@ bool Match::PrepareForOrder(){
 	long double price_ETH_quote = 0L;
 	long double price_ETH_bitCNY = 0L;
 	long double price_ETH_USDT = 0L;
+
+//=====================================================
+	long double price_base_MMC = 0L;
+	long double price_quote_MMC = 0L;
+	long double price_GLA_MMC = 0L;
+
+	if (m_order_base_asset == "MMC"){
+		price_base_MMC = 1;
+	}
+
+	if (m_order_quote_asset == "MMC"){
+		price_quote_MMC = 1;
+	}
+
+//=====================================================
+
 	if (m_order_base_asset == "bitCNY"){
 		price_base_CNY = 1;
 	}
@@ -802,13 +870,20 @@ bool Match::PrepareForOrder(){
 	if (m_order_quote_asset == "ETH"){
 		price_quote_ETH = 1;
 	}
+
+
+
 	if (reply3 == NULL){
 		LOG(ERROR) << "m_order_id:" << m_order_id << " redis reply null";
 		redisFree(m_redis);
 		m_redis = NULL;
 		return false;
 	}
-	if (reply3->type == REDIS_REPLY_ARRAY && reply3->elements == 10){
+
+	LOG(INFO) << "reply3->elements:"<< reply3->element;
+	LOG(INFO) << "reply3->elements:"<< reply3->elements;
+
+	if (reply3->type == REDIS_REPLY_ARRAY && reply3->elements == 13){
 		if (reply3->element[0]->type == REDIS_REPLY_STRING){
 			price_base_CNY = strtold(reply3->element[0]->str, NULL);
 		}
@@ -839,6 +914,23 @@ bool Match::PrepareForOrder(){
 		if (reply3->element[9]->type == REDIS_REPLY_STRING){
 			price_ETH_USDT = strtold(reply3->element[9]->str, NULL);
 		}
+
+		//add by chenxun
+		if (reply3->element[10]->type == REDIS_REPLY_STRING){
+			price_base_MMC = strtold(reply3->element[10]->str, NULL);
+			LOG(INFO) << "redis price_base_MMC:"  << price_base_MMC;
+		}
+
+		if (reply3->element[11]->type == REDIS_REPLY_STRING){
+			price_quote_MMC = strtold(reply3->element[11]->str, NULL);
+			LOG(INFO) << "redis price_quote_MMC:" << price_quote_MMC;
+		}
+
+		if (reply3->element[12]->type == REDIS_REPLY_STRING){
+			price_GLA_MMC = strtold(reply3->element[12]->str, NULL);
+			LOG(INFO) << "redis price_quote_MMC:" << price_quote_MMC;
+		}
+
 	}
 	freeReplyObject(reply3);
 	if (price_base_ETH > EPS && price_KK_ETH > EPS){
@@ -862,11 +954,47 @@ bool Match::PrepareForOrder(){
 	}else if (m_price_base_asset_KK > EPS && price_KK_ETH > EPS && price_ETH_bitCNY > EPS){
 		m_price_base_asset_bitCNY = m_price_base_asset_KK * price_KK_ETH * price_ETH_bitCNY;
 	}
-	
+
+	//add by chenxun
+	if (price_base_MMC > EPS && price_GLA_MMC > EPS){
+		m_price_base_asset_GLA = price_base_MMC / price_GLA_MMC;
+	}
+
+	if (price_quote_MMC > EPS && price_GLA_MMC > EPS){
+		m_price_quote_asset_GLA = price_quote_MMC / price_GLA_MMC;
+	}
+
+	/*if(price_GLA_MMC <= 0){
+		LOG(ERROR) << " 单子价格为 0 过滤掉 price_GLA_MMC :" << price_GLA_MMC;
+		return false;
+	}*/
+
+	LOG(INFO) << "price_base_MMC:"  << price_base_MMC;
+	LOG(INFO) << "price_quote_MMC:" << price_quote_MMC;
+	LOG(INFO) << "price_GLA_MMC:"  << price_GLA_MMC;
+	LOG(INFO) << "m_price_base_asset_GLA:"  << m_price_base_asset_GLA;
+	LOG(INFO) << "m_price_quote_asset_GLA:" << m_price_quote_asset_GLA;
+
 	LOG(INFO) << "m_price_base_asset_KK:" << m_price_base_asset_KK;
 	LOG(INFO) << "m_price_quote_asset_KK:" << m_price_quote_asset_KK;
 	LOG(INFO) << "m_order_id:" << m_order_id << " GetAssetPrice end";
-	
+
+	if(m_order_op == ORDER_SIDE_SELL) {
+		if (!order_user_account_json.isMember("GLA")){
+			LOG(ERROR) << "m_order_id:" << m_order_id << " available not enough： not GLA member";
+			return false;
+		}
+
+		string available = order_user_account_json["GLA"]["available"].asString();
+		if (m_order_type == ORDER_TYPE_LIMIT) {
+			if (strtold(available.c_str(), NULL) < m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt){
+				LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *  m_maker_fee * m_order_amt;
+				LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt;
+				return false;
+			}
+		}
+	}
+
 	return true;
 }
 
@@ -1107,6 +1235,10 @@ bool Match::MatchOrder(){
 	tmp_order_result["create_at"] = m_time_now;
 	tmp_order_result["ip"] = m_order_ip;
 	tmp_order_result["source"] = m_order_source;
+	tmp_order_result["is_subscribe"] = m_is_subscribe;
+	tmp_order_result["unfreeze_status"] = m_unfreeze_status;
+	tmp_order_result["first_unfreeze_at"] = m_first_unfreeze_at;
+	tmp_order_result["second_unfreeze_at"] = m_second_unfreeze_at;
 	if (m_order_type == ORDER_TYPE_LIMIT) {
 		tmp_order_result["price"] = m_order_price_str;
 		if (m_remain_amount < EPS){
@@ -1354,6 +1486,9 @@ bool Match::SettleTrade(){
 	LOG(INFO) << "m_order_id:" << m_order_id << " SettleTrade start";
 	
 	int trade_num = m_trade_list.size();
+
+	LOG(INFO) << "========================================m_trade_list  size: trade_num = " << trade_num ;
+
 	for (int i = 0; i < trade_num; i++){
 		string buy_user;
 		string sell_user;
@@ -1364,13 +1499,17 @@ bool Match::SettleTrade(){
 			buy_user = m_trade_list[i]["user_id"].asString();
 			sell_user = to_string(m_order_user_id);
 		}
+
+		LOG(INFO) << "=========== 撮合成功的orderid: ===============" << m_trade_list[i]["order_id"].asString();
+		LOG(INFO) << "=========== 撮合成功的m_order_id: ===============" <<  m_order_id;
+
 		
 		Json::Value tmp_obj = Json::Value::null;
 		tmp_obj["type"] = "account";
 		tmp_obj["id"] = m_trade_list[i]["id"].asString();
 		tmp_obj["update_at"] = m_time_now;
 		
-		//买方基础货币
+		//买方基础货币 abcd
 		tmp_obj["user_id"] = atoi(buy_user.c_str());
 		tmp_obj["asset"] = m_order_base_asset;
 		tmp_obj["change_available"] = m_trade_list[i]["amount"].asString();
@@ -1389,7 +1528,7 @@ bool Match::SettleTrade(){
 		
 		m_order_result_list.append(tmp_obj);
 		
-		//买方定价货币
+		//买方定价货币 mmc
 		tmp_obj["user_id"] = atoi(buy_user.c_str());
 		tmp_obj["asset"] = m_order_quote_asset;
 		if (m_order_type == ORDER_TYPE_MARKET && m_order_op == ORDER_SIDE_BUY) {
@@ -1417,7 +1556,7 @@ bool Match::SettleTrade(){
 		
 		m_order_result_list.append(tmp_obj);
 		
-		//卖方基础货币
+		//卖方基础货币 abcd
 		tmp_obj["user_id"] = atoi(sell_user.c_str());
 		tmp_obj["asset"] = m_order_base_asset;
 		if (m_order_type == ORDER_TYPE_MARKET && m_order_op == ORDER_SIDE_SELL) {
@@ -1441,7 +1580,7 @@ bool Match::SettleTrade(){
 		
 		m_order_result_list.append(tmp_obj);
 		
-		//卖方定价货币
+		//卖方定价货币 mmc
 		tmp_obj["user_id"] = atoi(sell_user.c_str());
 		tmp_obj["asset"] = m_order_quote_asset;
 		tmp_obj["change_available"] = switch_f_to_s(switch_s_to_f(m_trade_list[i]["amount"].asString()) * switch_s_to_f(m_trade_list[i]["price"].asString()));
@@ -1461,7 +1600,7 @@ bool Match::SettleTrade(){
 		m_order_result_list.append(tmp_obj);
 		
 		//计算手续费
-		string buy_fee_coin = m_order_base_asset;
+		string buy_fee_coin = m_order_base_asset; //abcd
 		long double buy_fee_amount = 0L;
 		string sell_fee_coin = m_order_quote_asset;
 		long double sell_fee_amount = 0L;
@@ -1469,13 +1608,17 @@ bool Match::SettleTrade(){
 			//新下单为买单，orderbook为卖单
 			buy_fee_amount = m_taker_fee * switch_s_to_f(m_trade_list[i]["amount"].asString()) * switch_s_to_f(m_user_account[buy_user]["fee_setting"]["taker"].asString());
 			sell_fee_amount = m_maker_fee * switch_s_to_f(m_trade_list[i]["amount"].asString()) * switch_s_to_f(m_trade_list[i]["price"].asString()) * switch_s_to_f(m_user_account[sell_user]["fee_setting"]["maker"].asString());
+			
 		}else{
 			//新下单为卖单，orderbook为买单
 			buy_fee_amount = m_maker_fee * switch_s_to_f(m_trade_list[i]["amount"].asString()) * switch_s_to_f(m_user_account[buy_user]["fee_setting"]["maker"].asString());
 			sell_fee_amount = m_taker_fee * switch_s_to_f(m_trade_list[i]["amount"].asString()) * switch_s_to_f(m_trade_list[i]["price"].asString()) * switch_s_to_f(m_user_account[sell_user]["fee_setting"]["taker"].asString());
 		}
 		
-		if (m_user_account[buy_user]["funds"].isMember("KK")
+		LOG(INFO) << " buy_fee_amount:"  << buy_fee_amount;
+		LOG(INFO) << " sell_fee_amount:"  << sell_fee_amount;
+
+		/*if (m_user_account[buy_user]["funds"].isMember("KK")
 			&& m_user_account[buy_user]["KK_switch"].asInt() == 1
 			&& m_price_base_asset_KK > EPS
 			&& switch_s_to_f(m_user_account[buy_user]["funds"]["KK"]["available"].asString()) > buy_fee_amount * m_price_base_asset_KK / 2){
@@ -1488,8 +1631,43 @@ bool Match::SettleTrade(){
 			&& switch_s_to_f(m_user_account[sell_user]["funds"]["KK"]["available"].asString()) > sell_fee_amount * m_price_quote_asset_KK / 2){
 			sell_fee_coin = "KK";
 			sell_fee_amount = sell_fee_amount * m_price_quote_asset_KK / 2;
+		}*/
+
+		if(m_order_base_asset != "GLA"){
+			if (m_user_account[buy_user]["funds"].isMember("GLA")){
+				buy_fee_coin = "GLA";
+				buy_fee_amount = buy_fee_amount * m_price_base_asset_GLA;
+				LOG(INFO) << "buy_fee_amount:"  << buy_fee_amount;
+			}else{
+				LOG(INFO) << "=============== buy_user"  << "not GLA member";
+				return false;
+			}
 		}
-		
+
+		if(m_order_quote_asset != "GLA"){
+			if (m_user_account[sell_user]["funds"].isMember("GLA")){
+				sell_fee_coin = "GLA";
+				sell_fee_amount = sell_fee_amount * m_price_quote_asset_GLA;
+				LOG(INFO) << "sell_fee_amount:"  << sell_fee_amount;
+			}else{
+				LOG(INFO) << "===============sell_user "  << "not GLA member";
+				return false;
+			}
+		}
+
+
+		if(isnan(buy_fee_amount)){
+			LOG(ERROR) << "=============buy_fee_amount  is  nan==========";
+			buy_fee_amount = 0;
+			sell_fee_amount = 0;
+		}
+
+		if(isnan(sell_fee_amount)){
+			LOG(ERROR) << "=============sell_fee_amount  is  nan==========";
+			buy_fee_amount = 0;
+			sell_fee_amount = 0;
+		}
+
 		buy_fee_amount = switch_s_to_f(switch_f_to_s(buy_fee_amount));
 		sell_fee_amount = switch_s_to_f(switch_f_to_s(sell_fee_amount));
 		
@@ -1500,7 +1678,13 @@ bool Match::SettleTrade(){
 		tmp_obj["user_id"] = atoi(buy_user.c_str());
 		tmp_obj["asset"] = buy_fee_coin;
 		tmp_obj["change_available"] = switch_f_to_s(-buy_fee_amount);
-		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount);;
+		//GLA 不够
+		if (switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount < 0)
+		{
+			LOG(INFO) << "===============买方GLA不够============= " ;
+			return false;
+		}
+		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount);
 		tmp_obj["change_frozen"] = switch_f_to_s(0);
 		tmp_obj["new_frozen"] = m_user_account[buy_user]["funds"][buy_fee_coin]["frozen"].asString();
 		tmp_obj["new_encode_available"] = HmacSha256Encode(tmp_obj["user_id"].asString() + buy_fee_coin + tmp_obj["new_available"].asString());
@@ -1511,12 +1695,27 @@ bool Match::SettleTrade(){
 		m_user_account[buy_user]["funds"][buy_fee_coin]["encode_available"] = tmp_obj["new_encode_available"].asString();
 		m_user_account[buy_user]["funds"][buy_fee_coin]["encode_frozen"] = tmp_obj["new_encode_frozen"].asString();
 		
+		LOG(INFO) << "jnl_type"<<  USER_ACCOUNT_JNL_FEE ;
+		LOG(INFO) << "=======================买方手续费==================================== " ;
+		LOG(INFO) << "user_id: "  << atoi(buy_user.c_str());
+		LOG(INFO) << "asset: "  << buy_fee_coin;
+		LOG(INFO) << "change_available: "  << switch_f_to_s(-buy_fee_amount);;
+		LOG(INFO) << "new_available: "  << switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount);
+		LOG(INFO) << "change_frozen: "  << switch_f_to_s(0);
+		LOG(INFO) << "new_frozen: "  << m_user_account[buy_user]["funds"][buy_fee_coin]["frozen"].asString();;
+		LOG(INFO) << "=======================买方手续费==================================== " ;
 		m_order_result_list.append(tmp_obj);
 		
 		//卖方手续费
 		tmp_obj["user_id"] = atoi(sell_user.c_str());
 		tmp_obj["asset"] = sell_fee_coin;
 		tmp_obj["change_available"] = switch_f_to_s(-sell_fee_amount);
+		//GLA 不够
+		if (switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount < 0)
+		{
+			LOG(INFO) << "===============卖方GLA不够============= " ;
+			return false;
+		}
 		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount);;
 		tmp_obj["change_frozen"] = switch_f_to_s(0);
 		tmp_obj["new_frozen"] = m_user_account[sell_user]["funds"][sell_fee_coin]["frozen"].asString();
@@ -1528,6 +1727,15 @@ bool Match::SettleTrade(){
 		m_user_account[sell_user]["funds"][sell_fee_coin]["encode_available"] = tmp_obj["new_encode_available"].asString();
 		m_user_account[sell_user]["funds"][sell_fee_coin]["encode_frozen"] = tmp_obj["new_encode_frozen"].asString();
 		
+		LOG(INFO) << "=======================卖方手续费==================================== " ;
+		LOG(INFO) << "user_id: "  << atoi(sell_user.c_str());
+		LOG(INFO) << "asset: "  << sell_fee_coin;
+		LOG(INFO) << "change_available: "  << switch_f_to_s(-sell_fee_amount);
+		LOG(INFO) << "new_available: "  << switch_f_to_s(switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount);;
+		LOG(INFO) << "change_frozen: "  << switch_f_to_s(0);
+		LOG(INFO) << "new_frozen: "  << m_user_account[sell_user]["funds"][sell_fee_coin]["frozen"].asString();
+		LOG(INFO) << "=======================卖方手续费==================================== " ;
+
 		m_order_result_list.append(tmp_obj);
 		
 		Json::Value tmp_trade_obj =  Json::Value::null;
@@ -2049,13 +2257,29 @@ bool Match::Msg(string order_str){
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
 
-		m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		/*m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
 		if (m_redis == NULL) {
 			LOG(ERROR) << "m_redis connect faild";
         	exit(1);
-		}
+		}*/
+
+		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
+
+        if (m_redis == NULL) {
+            LOG(ERROR) << "m_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_redis connect ok" << std::endl;
+            LOG(ERROR) << "reconnect m_redis connect ok";
+        }
+
+
 	}
 	
 	if (m_stat_redis == NULL) {
@@ -2067,13 +2291,26 @@ bool Match::Msg(string order_str){
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//std::string password = real_password(encode_password);
+		std::string password = encode_password;
 
-		m_stat_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		/*m_stat_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
 		if (m_stat_redis == NULL) {
 			LOG(ERROR) << "m_stat_redis connect faild";
         	exit(1);
-		}
+		}*/
+		//m_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_stat_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
+
+        if (m_stat_redis == NULL) {
+            LOG(ERROR) << "m_stat_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_redis connect ok" << std::endl;
+            LOG(ERROR) << "reconnect m_stat_redis connect ok";
+        }
 	}
 
 	if (m_index_redis == NULL) {
@@ -2085,13 +2322,25 @@ bool Match::Msg(string order_str){
 			sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
 		}
 		std::string encode_password = redis_config["password"].asString();
-		std::string password = real_password(encode_password);
+		//::string password = real_password(encode_password);
+		std::string password = encode_password;
 
-		m_index_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
+		/*m_index_redis = SentinelRedisConnect(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
 		if (m_index_redis == NULL) {
 			LOG(ERROR) << "m_index_redis connect faild";
         	exit(1);
-		}
+		}*/
+		for (auto it = sentinels.begin(); it != sentinels.end(); ++it) {
+            m_index_redis = redisConnect(it->first.c_str(), it->second) ;          
+        }
+
+        if (m_index_redis == NULL) {
+            LOG(ERROR) << "m_index_redis connect faild";
+            exit(1);
+        }else{
+            //std::cout << "m_redis connect ok" << std::endl;
+            LOG(ERROR) << "reconnect m_index_redis connect ok";
+        }
 	}
 
 	Reposition();
