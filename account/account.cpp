@@ -8,7 +8,7 @@ string switch_f_to_s(long double f){
 	char st[1024];
 	snprintf(st, sizeof(st), "%.*Lf", VALUE_DECIMAL, f);
 	string ans = st;
-	return ans;;
+	return ans;
 }
 
 long double switch_s_to_f(string s){
