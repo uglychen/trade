@@ -36,6 +36,7 @@ class Store {
     bool BulkUpdateLock(Json::Value& value);
     bool BulkInsertJournal(Json::Value& value);
     bool BulkUpdateTrans(Json::Value& value);
+    bool Del143_order(Json::Value& value);
 
     // bool InsertJournal_(Json::Value& value);
     Json::Value TestOrder();

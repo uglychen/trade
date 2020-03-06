@@ -132,6 +132,12 @@ struct TRANS_DATA {
     char order_id_ind;
 };
 
+struct DEL143_DATA {
+    char order_id[32];
+    char order_id_ind;
+};
+
+
 struct LOCK_DATA {
     int lock_id;
     char lock_id_ind;
@@ -170,6 +176,8 @@ bool Store::DoWork(Json::Value& values) {
 
     Json::Value trans = Json::Value(Json::arrayValue);
 
+    Json::Value del143 = Json::Value(Json::arrayValue);
+
     for (unsigned i = 0; i < values.size(); i++) {
         std::string type = values[i]["type"].asString();
         if (type == "order") {
@@ -187,6 +195,12 @@ bool Store::DoWork(Json::Value& values) {
             }
             values[i]["executed_price"] = executed_price;
             orders.append(values[i]);
+
+            //从库中删除143账户完整没有撮合的单子
+            if(remain_amount == origin_amount){
+                del143.append(values[i]);
+            }
+
         } else if (type == "trade") {
             trades.append(values[i]);
         } else if (type == "account") {
@@ -226,6 +240,13 @@ bool Store::DoWork(Json::Value& values) {
             goto failure;
         }
     }
+
+    if (del143.size()) {
+        if (!Del143_order(del143)) {
+            goto failure;
+        }
+    }
+
     if (account_map.size()) {
         for (Json::Value::iterator it = account_map.begin(); it != account_map.end(); it++) {
             accounts.append(*it);
@@ -1080,6 +1101,74 @@ failure:
     free(bind);
     return false;
 }
+
+bool Store::Del143_order(Json::Value& value) {
+    Json::Value values = Json::Value(Json::arrayValue);
+    if (value.isArray()) {
+        values = value;
+    } else {
+        values.append(value);
+    }
+
+    DEL143_DATA* data = (DEL143_DATA*)malloc(sizeof(DEL143_DATA) * values.size());
+    memset(data, 0, sizeof(DEL143_DATA) * values.size());
+    unsigned int array_size = values.size();
+    size_t row_size = sizeof(DEL143_DATA);
+
+    for (unsigned i = 0; i < values.size(); i++) {
+        strcpy(data[i].order_id, values[i]["id"].asCString());
+        LOG(INFO) << "=========data[i].order_id========" << data[i].order_id;
+        data[i].order_id_ind = STMT_INDICATOR_NTS;
+    }
+
+    MYSQL_BIND* bind = (MYSQL_BIND*)malloc(sizeof(MYSQL_BIND) * 1);
+    memset(bind, 0, sizeof(MYSQL_BIND) * 1);
+
+    // string
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = (void*)&data[0].order_id;
+    bind[0].u.indicator = &data[0].order_id_ind;
+
+    //std::string sql = "UPDATE t_otc_orders SET state=2 WHERE order_id=?";
+    std::string sql = "DELETE FROM t_order WHERE executed_amount = 0 and executed_quote_amount = 0 and order_id=?";
+    MYSQL_STMT* stmt = mysql_stmt_init(mysql_);
+    if (!stmt) {
+        goto failure;
+    }
+
+    if (mysql_stmt_prepare(stmt, sql.c_str(), sql.length())) {
+        goto stmt_failure;
+    }
+
+    mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+    mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+
+    if (mysql_stmt_bind_param(stmt, bind)) {
+        goto stmt_failure;
+    }
+
+    if (mysql_stmt_execute(stmt)) {
+        goto stmt_failure;
+    }
+
+    //assert(mysql_stmt_affected_rows(stmt) == values.size());
+
+    mysql_stmt_close(stmt);
+
+    free(data);
+    free(bind);
+    return true;
+
+stmt_failure:
+    show_stmt_error(stmt);
+    mysql_stmt_close(stmt);
+
+failure:
+    free(data);
+    free(bind);
+    return false;
+}
+
 
 bool Store::BulkUpdateLock(Json::Value& value) {
     Json::Value values = Json::Value(Json::arrayValue);
