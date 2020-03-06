@@ -806,7 +806,12 @@ bool Match::PrepareForOrder(){
 		LOG(INFO) << "m_order_id:" << m_order_id << " m_taker_fee: " << m_taker_fee << " change to 0.001 ";
 		m_taker_fee = 0.001L;
 	}*/
-	
+
+	if(m_order_user_id  == 143){
+		m_maker_fee = 0;
+		m_taker_fee = 0;
+	}
+
 	if (!CheckDecimal(m_order_amt, m_amount_decimal)){
 		LOG(ERROR) << "m_order_id:" << m_order_id << " m_order_amt: " << m_order_amt << " m_amount_decimal: " << m_amount_decimal;
 		freeReplyObject(reply3);
