@@ -124,6 +124,7 @@ bool Account::InitAccount(string account_str){
 		m_trade_user_id = atoi(account_json["trade_user_id"].asString().c_str());
 	}else{
 		m_is_trans = 0;
+		m_trade_user_id = 0;
 	}
 
 	if(m_is_trans == 1){
@@ -273,25 +274,31 @@ bool Account::WriteRedis(){
 	m_redis_cmd_list.push_back(redis_cmd_str);
 	
 	//add by chenxun
-	result = Json::writeString(writer, m_trade_user_account);
-	LOG(INFO)<< "SET account_user: " << result.c_str();
-	if (redisFormatCommand(&redis_cmd, "SET account_user_%d %s", m_trade_user_id, result.c_str()) <= 0){
-		LOG(ERROR) << "redis format error";
-		return false;
+	if(m_is_trans == 1){
+		if(m_trade_user_account != NULL){
+			result = Json::writeString(writer, m_trade_user_account);
+			LOG(INFO)<< "SET account_user: " << result.c_str();
+			if (redisFormatCommand(&redis_cmd, "SET account_user_%d %s", m_trade_user_id, result.c_str()) <= 0){
+				LOG(ERROR) << "redis format error";
+				return false;
+			}
+			redis_cmd_str = redis_cmd;
+			free(redis_cmd);
+			m_redis_cmd_list.push_back(redis_cmd_str);
+		}
+
+		if(m_trade_account_result_list.size()){
+			result = Json::writeString(writer, m_trade_account_result_list);
+			if (redisFormatCommand(&redis_cmd, "LPUSH order_result_list %s", result.c_str()) <= 0){
+				LOG(ERROR) << "redis format error";
+				return false;
+			}
+			redis_cmd_str = redis_cmd;
+			free(redis_cmd);
+			m_redis_cmd_list.push_back(redis_cmd_str);
+		}
 	}
-	redis_cmd_str = redis_cmd;
-	free(redis_cmd);
-	m_redis_cmd_list.push_back(redis_cmd_str);
-	
-	result = Json::writeString(writer, m_trade_account_result_list);
-	if (redisFormatCommand(&redis_cmd, "LPUSH order_result_list %s", result.c_str()) <= 0){
-		LOG(ERROR) << "redis format error";
-		return false;
-	}
-	redis_cmd_str = redis_cmd;
-	free(redis_cmd);
-	m_redis_cmd_list.push_back(redis_cmd_str);
-	
+
 	for (int i = 0; i < (int)m_redis_cmd_list.size(); i++){
 		LOG(INFO) << "redis cmd list " << m_redis_cmd_list[i];
 	}
@@ -485,9 +492,11 @@ bool Account::Msg(string account_str){
 		return false;
 	}
 
-	if (!TradeSettleAccount()){
-		res = false;
-		return false;
+	if(m_is_trans == 1){
+		if (!TradeSettleAccount()){
+			res = false;
+			return false;
+		}
 	}
 
 	if (!WriteRedis()) return false;
