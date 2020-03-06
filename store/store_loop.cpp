@@ -271,6 +271,6 @@ void StoreLoop::ReconnectRedis() {
         exit(1);
     }else{
         //std::cout << "m_redis connect ok" << std::endl;
-        LOG(ERROR) << "redis_ connect ok";
+        LOG(INFO) << "redis_ connect ok";
     }
 }

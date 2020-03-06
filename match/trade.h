@@ -26,7 +26,7 @@ class Trade {
     std::string producer_exchange_;
     std::string producer_routing_key_;
 
-	  Match* m_match;
+    Match* m_match;
 };
 
 #endif  // TRADE_H_

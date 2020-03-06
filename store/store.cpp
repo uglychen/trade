@@ -346,11 +346,11 @@ void Store::InitMysql() {
     database = mysql.get("database", "").asString();
     port = mysql.get("port", 0).asInt();
 
-	LOG(ERROR) << "InitMysql host: " << host;
-	LOG(ERROR) << "InitMysql username: " << username;
-	LOG(ERROR) << "InitMysql password: " << password;
-	LOG(ERROR) << "InitMysql database: " << database;
-	LOG(ERROR) << "InitMysql port: " << port;
+	LOG(INFO) << "InitMysql host: " << host;
+	LOG(INFO) << "InitMysql username: " << username;
+	LOG(INFO) << "InitMysql password: " << password;
+	LOG(INFO) << "InitMysql database: " << database;
+	LOG(INFO) << "InitMysql port: " << port;
 	
     mysql_ = mysql_init(NULL);
     std::string real_passwd = password;
@@ -387,10 +387,10 @@ void Store::InitMongo() {
     username = mongo.get("username", "").asString();
     password = mongo.get("password", "").asString();
 
-	LOG(ERROR) << "InitMongo host: " << host;
-	LOG(ERROR) << "InitMongo port: " << port;
-	LOG(ERROR) << "InitMongo username: " << username;
-	LOG(ERROR) << "InitMongo password: " << password;
+	LOG(INFO) << "InitMongo host: " << host;
+	LOG(INFO) << "InitMongo port: " << port;
+	LOG(INFO) << "InitMongo username: " << username;
+	LOG(INFO) << "InitMongo password: " << password;
 
     char uri[128];
     if (!username.length() || !password.length()) {

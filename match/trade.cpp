@@ -185,14 +185,20 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     routing_key = config.get("routing_key", "").asString();
     queue = config.get("queue", "").asString();
 
-	LOG(ERROR) << "InitMQ : " << host;
-	LOG(ERROR) << "InitMQ : " << port;
-	LOG(ERROR) << "InitMQ : " << vhost;
-	LOG(ERROR) << "InitMQ : " << username;
-	LOG(ERROR) << "InitMQ : " << encode_password;
-	LOG(ERROR) << "InitMQ : " << exchange;
-	LOG(ERROR) << "InitMQ : " << routing_key;
-	LOG(ERROR) << "InitMQ : " << queue;
+    if(consumer){
+        LOG(INFO) << "InitMQ  consumer";
+    }else{
+        LOG(INFO) << "InitMQ  producer_";
+    }
+
+	LOG(INFO) << "InitMQ : " << host;
+	LOG(INFO) << "InitMQ : " << port;
+	LOG(INFO) << "InitMQ : " << vhost;
+	LOG(INFO) << "InitMQ : " << username;
+	LOG(INFO) << "InitMQ : " << encode_password;
+	LOG(INFO) << "InitMQ : " << exchange;
+	LOG(INFO) << "InitMQ : " << routing_key;
+	LOG(INFO) << "InitMQ : " << queue;
 
 
     conn = amqp_new_connection();
@@ -228,6 +234,6 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
         producer_routing_key_ = routing_key;
     }
     
-    LOG(ERROR) << "mq ok";
+    LOG(INFO) << "mq ok";
     return conn;
 }

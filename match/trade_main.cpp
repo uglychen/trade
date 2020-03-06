@@ -48,14 +48,14 @@ void InitRedisLock() {
     std::vector<std::pair<std::string, int> > sentinels;
     for (unsigned i = 0; i < sentinel_config.size(); ++i) {
         sentinels.push_back(std::make_pair(sentinel_config[i]["host"].asString(), sentinel_config[i]["port"].asInt()));
-		LOG(ERROR) << "InitRedisLock redis  ip : " <<sentinel_config[i]["host"].asString();
-		LOG(ERROR) << "InitRedisLock redis port: " <<sentinel_config[i]["port"].asInt();
+		LOG(INFO) << "InitRedisLock redis  ip : " <<sentinel_config[i]["host"].asString();
+		LOG(INFO) << "InitRedisLock redis port: " <<sentinel_config[i]["port"].asInt();
     }
     std::string encode_password = redis_config["password"].asString();
     //std::string password = real_password(encode_password);
 	std::string password = encode_password;
 
-	LOG(ERROR) << "InitRedisLock redis password:" << password;
+	LOG(INFO) << "InitRedisLock redis password:" << password;
 	
 	InitLock(sentinels, redis_config["master_name"].asCString(), password.c_str(), redis_config["database"].asInt());
 }

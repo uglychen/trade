@@ -29,7 +29,29 @@ void Trade::Init() {
         die("missing consumer config");
     }
 
+    const Json::Value producer = config["producermq"];
+    if (producer.empty()) {
+        die("missing producer config");
+    }
+
     consumer_ = InitMQ(consumer, true);
+    producer_ = InitMQ(producer, false);
+}
+
+void Trade::SendMessage(std::string msg) {
+    amqp_basic_properties_t props;
+    props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
+    props.content_type = amqp_cstring_bytes("text/plain");
+    props.delivery_mode = 2; /* persistent delivery mode */
+    die_on_error(amqp_basic_publish(producer_,
+                                    1,
+                                    amqp_cstring_bytes(producer_exchange_.c_str()),
+                                    amqp_cstring_bytes(producer_routing_key_.c_str()),
+                                    0,
+                                    0,
+                                    &props,
+                                    amqp_cstring_bytes(msg.c_str())),
+                 "Publishing");
 }
 
 void Trade::Run() {
@@ -133,6 +155,10 @@ void Trade::CleanUp() {
     die_on_amqp_error(amqp_channel_close(consumer_, 1, AMQP_REPLY_SUCCESS), "Closing channel");
     die_on_amqp_error(amqp_connection_close(consumer_, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(consumer_), "Ending connection");
+
+    die_on_amqp_error(amqp_channel_close(producer_, 1, AMQP_REPLY_SUCCESS), "Closing channel");
+    die_on_amqp_error(amqp_connection_close(producer_, AMQP_REPLY_SUCCESS), "Closing connection");
+    die_on_error(amqp_destroy_connection(producer_), "Ending connection");
 }
 
 amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
@@ -159,14 +185,20 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     routing_key = config.get("routing_key", "").asString();
     queue = config.get("queue", "").asString();
 
-    LOG(ERROR) << "InitMQ : " << host;
-    LOG(ERROR) << "InitMQ : " << port;
-    LOG(ERROR) << "InitMQ : " << vhost;
-    LOG(ERROR) << "InitMQ : " << username;
-    LOG(ERROR) << "InitMQ : " << encode_password;
-    LOG(ERROR) << "InitMQ : " << exchange;
-    LOG(ERROR) << "InitMQ : " << routing_key;
-    LOG(ERROR) << "InitMQ : " << queue;
+    if(consumer){
+        LOG(INFO) << "InitMQ  consumer";
+    }else{
+        LOG(INFO) << "InitMQ  producer_";
+    }
+
+    LOG(INFO) << "InitMQ : " << host;
+    LOG(INFO) << "InitMQ : " << port;
+    LOG(INFO) << "InitMQ : " << vhost;
+    LOG(INFO) << "InitMQ : " << username;
+    LOG(INFO) << "InitMQ : " << encode_password;
+    LOG(INFO) << "InitMQ : " << exchange;
+    LOG(INFO) << "InitMQ : " << routing_key;
+    LOG(INFO) << "InitMQ : " << queue;
 
     conn = amqp_new_connection();
 
@@ -202,6 +234,5 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     }
     
     LOG(INFO) << "mq ok";
-    
     return conn;
 }

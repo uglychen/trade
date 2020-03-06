@@ -22,6 +22,7 @@ class Trade {
     amqp_connection_state_t InitMQ(Json::Value config, bool consumer);
 
     amqp_connection_state_t consumer_;
+    amqp_connection_state_t producer_;
     std::string producer_exchange_;
     std::string producer_routing_key_;
 

@@ -121,7 +121,7 @@ bool Match::Init() {
             exit(1);
         }else{
             //std::cout << "m_redis connect ok" << std::endl;
-            LOG(ERROR) << "m_redis connect ok";
+            LOG(INFO) << "m_redis connect ok";
         }
 	}
 	
@@ -146,7 +146,7 @@ bool Match::Init() {
             exit(1);
         }else{
             //std::cout << "m_stat_redis connect ok" << std::endl;
-            LOG(ERROR) << "m_stat_redis connect ok";
+            LOG(INFO) << "m_stat_redis connect ok";
         }
 	}
 
@@ -171,7 +171,7 @@ bool Match::Init() {
             exit(1);
         }else{
             //std::cout << "m_index_redis connect ok" << std::endl;
-            LOG(ERROR) << "m_index_redis connect ok";
+            LOG(INFO) << "m_index_redis connect ok";
         }
 	}
 	
