@@ -216,22 +216,27 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
     amqp_channel_open(conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 
-    amqp_exchange_declare(conn, 1, amqp_cstring_bytes(exchange.c_str()), amqp_cstring_bytes("direct"), 0, 1, 0, 0, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring exchange");
-
-    amqp_queue_declare(conn, 1, amqp_cstring_bytes(queue.c_str()), 0, 1, 0, 0, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-
-    amqp_queue_bind(conn, 1, amqp_cstring_bytes(queue.c_str()), amqp_cstring_bytes(exchange.c_str()), amqp_cstring_bytes(routing_key.c_str()), amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
-
     if (consumer) {
+        amqp_exchange_declare(conn, 1, amqp_cstring_bytes(exchange.c_str()), amqp_cstring_bytes("direct"), 0, 1, 0, 0, amqp_empty_table);
+        die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring exchange");
+
+        amqp_queue_declare(conn, 1, amqp_cstring_bytes(queue.c_str()), 0, 1, 0, 0, amqp_empty_table);
+        die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
+
+        amqp_queue_bind(conn, 1, amqp_cstring_bytes(queue.c_str()), amqp_cstring_bytes(exchange.c_str()), amqp_cstring_bytes(routing_key.c_str()), amqp_empty_table);
+        die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
         amqp_basic_consume(conn, 1, amqp_cstring_bytes(queue.c_str()), amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Consuming");
     } else {
+        amqp_exchange_declare(conn, 1, amqp_cstring_bytes(exchange.c_str()), amqp_cstring_bytes("fanout"), 0, 0, 0, 0, amqp_empty_table);
+        die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring exchange");
+
         producer_exchange_ = exchange;
         producer_routing_key_ = routing_key;
+
     }
+
+
     
     LOG(INFO) << "mq ok";
     return conn;

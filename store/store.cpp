@@ -197,10 +197,13 @@ bool Store::DoWork(Json::Value& values) {
             orders.append(values[i]);
 
             //从库中删除143账户完整没有撮合的单子
-            if(remain_amount == origin_amount){
-                del143.append(values[i]);
+            int user_id = values[i]["user_id"].asInt();
+            int status = values[i]["status"].asInt();
+            if(user_id == 143 && status == 4){
+                if(remain_amount == origin_amount){
+                    del143.append(values[i]);
+                }
             }
-
         } else if (type == "trade") {
             trades.append(values[i]);
         } else if (type == "account") {

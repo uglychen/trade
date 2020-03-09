@@ -63,6 +63,8 @@ class Account {
 		Json::Value	m_trade_user_account;
 		Json::Value m_trade_account_result_list;							
 		vector<string> m_trade_redis_cmd_list;
+
+		Json::Value account_json;
 };
 
 #endif // ACCOUNT_H_

@@ -9,6 +9,16 @@
     "routing_key" : "account",
     "queue" : "account"
   },
+  "producermq" : {
+    "host" : "172.31.8.75",
+    "port" : 5672,
+    "vhost" : "/kk",
+    "username" : "admin",
+    "password" : "mmcex_pwd",
+    "exchange" : "otc.fanout",
+    "routing_key" : "",
+    "queue" : ""
+  },
   "redis" : {
     "sentinels" : [
       {

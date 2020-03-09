@@ -100,7 +100,7 @@ bool Account::InitAccount(string account_str){
 	std::unique_ptr<Json::CharReader> const reader(rbuilder.newCharReader());
 	JSONCPP_STRING error;
 	
-	Json::Value account_json = Json::Value::null;
+	account_json = Json::Value::null;
 	bool ret = reader->parse(account_str.c_str(), account_str.c_str() + account_str.size(), &account_json, &error);
 	if (!(ret && error.size() == 0)) {
 		LOG(ERROR) << "json error";
@@ -285,6 +285,11 @@ bool Account::WriteRedis(){
 			redis_cmd_str = redis_cmd;
 			free(redis_cmd);
 			m_redis_cmd_list.push_back(redis_cmd_str);
+
+			LOG(INFO) << "================= 转账成功 发送成功消息到mq ================";
+			account_json["trans_state"] = 1;
+			result = Json::writeString(writer, account_json);
+			m_trade->SendMessage(result);
 		}
 
 		if(m_trade_account_result_list.size()){
@@ -451,7 +456,7 @@ bool Account::SettleAccount(){
 
 bool Account::Msg(string account_str){
 	LOG(INFO) << account_str;
-    LOG(ERROR) << " received msg from mq： "<< account_str;
+    LOG(INFO) << " received msg from mq： "<< account_str;
 	
 	if (m_redis) {
 		redisReply* reply = (redisReply*) redisCommand(m_redis, "INFO");
