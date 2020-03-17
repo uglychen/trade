@@ -462,8 +462,8 @@ bool Match::PrepareForOrder(){
 	redisReply* reply2 = NULL;
 	redisReply* reply3 = NULL;
 	
-	LOG(ERROR) << "m_order_base_asset:" << m_order_base_asset;
-	LOG(ERROR) << "m_order_quote_asset:" << m_order_quote_asset;
+	LOG(INFO) << "m_order_base_asset:" << m_order_base_asset;
+	LOG(INFO) << "m_order_quote_asset:" << m_order_quote_asset;
 
 	redisAppendCommand(m_redis, "GET account_user_%d", m_order_user_id);
 	redisAppendCommand(m_stat_redis, "HMGET trade_config_%s_%s min_amt max_amt amt_decimal price_decimal maker_fee taker_fee state", m_order_base_asset.c_str(), m_order_quote_asset.c_str());
@@ -484,7 +484,7 @@ bool Match::PrepareForOrder(){
 	redisGetReply(m_stat_redis, (void**)&reply2);
 	redisGetReply(m_redis, (void**)&reply3);
 
-	LOG(INFO) << "redisGetReply: " << m_order_quote_asset;
+	//LOG(INFO) << "redisGetReply: " << m_order_quote_asset;
 
 	Json::Value order_user_account_json = Json::Value::null;
 	if (reply1 == NULL){
@@ -514,7 +514,7 @@ bool Match::PrepareForOrder(){
 	}
 
 	 LOG(INFO) << "order_user_account_str.c_str(): " << order_user_account_str.c_str();
-	 LOG(INFO) << "m_order_quote_asset: " << m_order_quote_asset;
+	 //LOG(INFO) << "m_order_quote_asset: " << m_order_quote_asset;
 
 	if (m_order_op == ORDER_SIDE_BUY) {
 		if (!order_user_account_json.isMember(m_order_quote_asset)){
@@ -831,8 +831,8 @@ bool Match::PrepareForOrder(){
 	//查询交易对币种和KK的价格
 	LOG(INFO) << "m_order_id:" << m_order_id << " GetAssetPrice start";
 
-	LOG(ERROR) << " ====== m_order_quote_asset:" << m_order_base_asset ;
-	LOG(ERROR) << " ====== m_order_quote_asset:" << m_order_quote_asset ;
+	LOG(INFO) << " ====== m_order_quote_asset:" << m_order_base_asset ;
+	LOG(INFO) << " ====== m_order_quote_asset:" << m_order_quote_asset ;
 
 	m_price_base_asset_KK = 0L;
 	m_price_quote_asset_KK = 0L;
@@ -2213,6 +2213,8 @@ bool Match::DeleteOrder(){
 		tmp_obj["change_available"] = switch_f_to_s(m_remain_amount);
 		tmp_obj["change_frozen"] = switch_f_to_s(-m_remain_amount);
 	}
+	tmp_obj["amount"] = switch_f_to_s(m_remain_amount);
+	tmp_obj["origin_amount"] = m_order_amt_str;
 	tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[to_string(m_order_user_id)]["funds"][tmp_obj["asset"].asString()]["available"].asString()) +  switch_s_to_f(tmp_obj["change_available"].asString()));
 	tmp_obj["new_frozen"] = switch_f_to_s(switch_s_to_f(m_user_account[to_string(m_order_user_id)]["funds"][tmp_obj["asset"].asString()]["frozen"].asString()) + switch_s_to_f(tmp_obj["change_frozen"].asString()));
 	tmp_obj["jnl_type"] = USER_ACCOUNT_JNL_CANCEL_ORDER;

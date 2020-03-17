@@ -10,7 +10,27 @@
 #include "logging.h"
 #include "utils.h"
 
+
+#include <unistd.h>
+#include <pthread.h>
+
 #define SUMMARY_EVERY_US 1000000
+
+pthread_mutex_t mutex;
+
+void* send_func(void *arg){
+
+    Trade * tmp = (Trade *) arg;
+
+    while(1){
+        std::string result = "";
+        LOG(INFO) << "=========== 线程发送无用的心跳消息==========";
+        pthread_mutex_lock(&mutex);
+        tmp->SendMessage(result);
+        pthread_mutex_unlock(&mutex);
+        sleep(60);
+    }
+}
 
 Trade::Trade() {
 
@@ -63,6 +83,9 @@ void Trade::Run() {
     uint64_t now;
 
     amqp_frame_t frame;
+
+    pthread_t tid;  
+    pthread_create(&tid, NULL, send_func, this);
 
     for (;;) {
         amqp_rpc_reply_t ret;
@@ -141,7 +164,9 @@ void Trade::Run() {
             amqp_bytes_t& body = envelope.message.body;
             if (body.len > 0) {
                 std::string msg((char*)body.bytes, body.len);
+                pthread_mutex_lock(&mutex);
                 m_account->Msg(msg);
+                pthread_mutex_unlock(&mutex);
             }
 
             amqp_destroy_envelope(&envelope);
@@ -212,7 +237,13 @@ amqp_connection_state_t Trade::InitMQ(Json::Value config, bool consumer) {
         die("opening TCP socket");
     }
 
-    die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
+    if(consumer){
+        die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
+    }else{
+        die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
+    }
+
+    //die_on_amqp_error(amqp_login(conn, vhost.c_str(), 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, username.c_str(), password.c_str()), "Logging in");
     amqp_channel_open(conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 

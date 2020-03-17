@@ -207,7 +207,43 @@ bool Store::DoWork(Json::Value& values) {
         } else if (type == "trade") {
             trades.append(values[i]);
         } else if (type == "account") {
-            journals.append(values[i]);
+            int user_id = 0;
+            int jnl_type = 0;            
+            long double remain_amount = 0;
+            long double origin_amount = 0;
+            if (values[i].isMember("user_id")){
+                user_id = values[i]["user_id"].asInt();
+                //LOG(INFO) << "======================================================user_id: " << user_id;
+            }
+            
+            if (values[i].isMember("jnl_type")){
+                jnl_type = values[i]["jnl_type"].asInt(); 
+                //LOG(INFO) << "======================================================jnl_type: " << jnl_type;
+            }
+
+            if (values[i].isMember("amount")){
+                remain_amount = strtold(values[i]["amount"].asCString(), NULL);
+                //LOG(INFO) << "======================================================remain_amount: " << remain_amount;
+            }
+
+            if (values[i].isMember("origin_amount")){
+                origin_amount = strtold(values[i]["origin_amount"].asCString(), NULL);
+                //LOG(INFO) << "======================================================origin_amount: " << origin_amount;
+            }
+
+            if(user_id == 143 && jnl_type == 10){
+                if(remain_amount == origin_amount){
+                    //完整撤单 不再写入mongodb
+                    LOG(INFO) << "======================================================user_id: " << user_id;
+                    LOG(INFO) << "======================================================jnl_type: " << jnl_type;
+                    LOG(INFO) << "======================================================remain_amount: " << remain_amount;
+                    LOG(INFO) << "======================================================origin_amount: " << origin_amount;
+                }else{
+                    journals.append(values[i]);
+                }
+            }else{
+                journals.append(values[i]);
+            }
             account_map[values[i]["user_id"].asString() + values[i]["asset"].asString()] = values[i];
         } else if (type == "apply_withdraw") {
             withdraws.append(values[i]);

@@ -287,7 +287,7 @@ bool Account::WriteRedis(){
 			m_redis_cmd_list.push_back(redis_cmd_str);
 
 			LOG(INFO) << "================= 转账成功 发送成功消息到mq ================";
-			account_json["trans_state"] = 1;
+			account_json["trans_state"] = 2;
 			result = Json::writeString(writer, account_json);
 			m_trade->SendMessage(result);
 		}
