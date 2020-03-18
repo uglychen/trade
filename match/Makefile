@@ -12,7 +12,7 @@ CXX=g++
 RM=rm -f
 CPPFLAGS=-g -Wall -std=gnu++11  -D_GLIBCXX_USE_CXX11_ABI=0 -I../base -I../include -I../include/librabbitmq -I../include/hiredis
 LDFLAGS=-L../lib
-LDLIBS=-lrabbitmq -ljsoncpp -lhiredis -lssl -lcrypto
+LDLIBS=-lrabbitmq -ljsoncpp -lhiredis -lssl -lcrypto -lpthread
 
 SRCS=trade_main.cpp trade.cpp match.cpp\
 	 ../base/logging.cpp ../base/config.cpp ../base/utils.cpp ../base/lock.cpp ../base/amqp_utils.cpp ../base/redis_utils.cpp

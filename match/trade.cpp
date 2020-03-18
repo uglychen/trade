@@ -10,7 +10,26 @@
 #include "logging.h"
 #include "utils.h"
 
+#include <unistd.h>
+#include <pthread.h>
+
 #define SUMMARY_EVERY_US 1000000
+
+pthread_mutex_t mutex;
+
+void* send_func(void *arg){
+
+    Trade * tmp = (Trade *) arg;
+
+    while(1){
+        std::string result = "";
+        LOG(INFO) << "=========== 线程发送心跳消息 ==========";
+        pthread_mutex_lock(&mutex);
+        tmp->SendMessage(result);
+        pthread_mutex_unlock(&mutex);
+        sleep(60);
+    }
+}
 
 Trade::Trade() {
 
@@ -63,6 +82,9 @@ void Trade::Run() {
     uint64_t now;
 
     amqp_frame_t frame;
+
+    pthread_t tid;  
+    pthread_create(&tid, NULL, send_func, this);
 
     for (;;) {
         amqp_rpc_reply_t ret;
@@ -141,7 +163,9 @@ void Trade::Run() {
             amqp_bytes_t& body = envelope.message.body;
             if (body.len > 0) {
                 std::string msg((char*)body.bytes, body.len);
+                pthread_mutex_lock(&mutex);
                 m_match->Msg(msg);
+                pthread_mutex_unlock(&mutex);
             }
 
             amqp_destroy_envelope(&envelope);

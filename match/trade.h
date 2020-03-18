@@ -18,6 +18,8 @@ class Trade {
 
     void SendMessage(std::string msg);
 
+    friend void* send_func(void *arg);
+
   private:
     amqp_connection_state_t InitMQ(Json::Value config, bool consumer);
 

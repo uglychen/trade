@@ -270,6 +270,7 @@ bool Match::InitOrder(string order_str){
 			m_is_subscribe = 0;
 		}else{
 			m_is_subscribe  = order_json["is_subscribe"].asInt();
+			LOG(INFO) << "=================  申购单子  ===================";
 		}
 
 		if (!order_json.isMember("unfreeze_status")){
@@ -933,7 +934,7 @@ bool Match::PrepareForOrder(){
 
 		if (reply3->element[12]->type == REDIS_REPLY_STRING){
 			price_GLA_MMC = strtold(reply3->element[12]->str, NULL);
-			LOG(INFO) << "redis price_quote_MMC:" << price_quote_MMC;
+			LOG(INFO) << "redis price_GLA_MMC:" << price_GLA_MMC;
 		}
 
 	}
@@ -961,12 +962,20 @@ bool Match::PrepareForOrder(){
 	}
 
 	//add by chenxun
-	if (price_base_MMC > EPS && price_GLA_MMC > EPS){
-		m_price_base_asset_GLA = price_base_MMC / price_GLA_MMC;
+	if(m_is_subscribe != 1){
+		if (price_base_MMC > EPS && price_GLA_MMC > EPS){
+			m_price_base_asset_GLA = price_base_MMC / price_GLA_MMC;
+		}
+	}else{
+		m_price_base_asset_MMC = price_base_MMC;
 	}
-
-	if (price_quote_MMC > EPS && price_GLA_MMC > EPS){
-		m_price_quote_asset_GLA = price_quote_MMC / price_GLA_MMC;
+	
+	if(m_is_subscribe != 1){
+		if (price_quote_MMC > EPS && price_GLA_MMC > EPS){
+			m_price_quote_asset_GLA = price_quote_MMC / price_GLA_MMC;
+		}
+	}else{
+		m_price_quote_asset_MMC = price_quote_MMC;
 	}
 
 	/*if(price_GLA_MMC <= 0){
@@ -977,25 +986,49 @@ bool Match::PrepareForOrder(){
 	LOG(INFO) << "price_base_MMC:"  << price_base_MMC;
 	LOG(INFO) << "price_quote_MMC:" << price_quote_MMC;
 	LOG(INFO) << "price_GLA_MMC:"  << price_GLA_MMC;
-	LOG(INFO) << "m_price_base_asset_GLA:"  << m_price_base_asset_GLA;
-	LOG(INFO) << "m_price_quote_asset_GLA:" << m_price_quote_asset_GLA;
 
-	LOG(INFO) << "m_price_base_asset_KK:" << m_price_base_asset_KK;
-	LOG(INFO) << "m_price_quote_asset_KK:" << m_price_quote_asset_KK;
+	if(m_is_subscribe != 1){
+		LOG(INFO) << "m_price_base_asset_GLA: "  << m_price_base_asset_GLA;
+		LOG(INFO) << "m_price_quote_asset_GLA: " << m_price_quote_asset_GLA;
+	}else{
+		LOG(INFO) << "m_price_base_asset_MMC: "  << m_price_base_asset_MMC;
+		LOG(INFO) << "m_price_quote_asset_MMC: " << m_price_quote_asset_MMC;
+	}
+
+	//LOG(INFO) << "m_price_base_asset_KK:" << m_price_base_asset_KK;
+	//LOG(INFO) << "m_price_quote_asset_KK:" << m_price_quote_asset_KK;
 	LOG(INFO) << "m_order_id:" << m_order_id << " GetAssetPrice end";
 
 	if(m_order_op == ORDER_SIDE_SELL) {
-		if (!order_user_account_json.isMember("GLA")){
-			LOG(ERROR) << "m_order_id:" << m_order_id << " available not enough： not GLA member";
-			return false;
-		}
-
-		string available = order_user_account_json["GLA"]["available"].asString();
-		if (m_order_type == ORDER_TYPE_LIMIT) {
-			if (strtold(available.c_str(), NULL) < m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt){
-				LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *  m_maker_fee * m_order_amt;
-				LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt;
+		if(m_is_subscribe != 1){
+			if (!order_user_account_json.isMember("GLA")){
+				LOG(ERROR) << "m_order_id:" << m_order_id << " available not enough： not GLA member";
 				return false;
+			}
+
+			string available = order_user_account_json["GLA"]["available"].asString();
+			if (m_order_type == ORDER_TYPE_LIMIT) {
+				if (strtold(available.c_str(), NULL) <= m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt){
+					LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *  m_maker_fee * m_order_amt;
+					LOG(ERROR) << "用户的手续费够不够 以GLA为单位： " << m_price_base_asset_GLA *(m_maker_fee + 1) * m_order_amt;
+					return false;
+				}
+			}
+		}else{
+			// 申购
+			LOG(INFO) << "=============== 申购 查询账户mmc是够购手续费 ===========";
+			if (!order_user_account_json.isMember("MMC")){
+				LOG(ERROR) << "m_order_id:" << m_order_id << " available not enough： not MMC member";
+				return false;
+			}
+
+			string available = order_user_account_json["MMC"]["available"].asString();
+			if (m_order_type == ORDER_TYPE_LIMIT) {
+				if (strtold(available.c_str(), NULL) <= m_price_base_asset_MMC * (m_maker_fee + 1) * m_order_amt){
+					LOG(ERROR) << "用户的手续费够不够 以MMC为单位： " << m_maker_fee * m_order_amt;
+					LOG(ERROR) << "用户的手续费够不够 以MMC为单位： " << m_price_base_asset_MMC * (m_maker_fee + 1) * m_order_amt;
+					return false;
+				}
 			}
 		}
 	}
@@ -1658,28 +1691,41 @@ bool Match::SettleTrade(){
 			sell_fee_amount = sell_fee_amount * m_price_quote_asset_KK / 2;
 		}*/
 
-		if(m_order_base_asset != "GLA"){
-			if (m_user_account[buy_user]["funds"].isMember("GLA")){
-				buy_fee_coin = "GLA";
-				buy_fee_amount = buy_fee_amount * m_price_base_asset_GLA;
-				LOG(INFO) << "buy_fee_amount:"  << buy_fee_amount;
-			}else{
-				LOG(INFO) << "=============== buy_user"  << "not GLA member";
-				return false;
+		if(m_is_subscribe != 1){
+			if(m_order_base_asset != "GLA"){
+				if (m_user_account[buy_user]["funds"].isMember("GLA")){
+					buy_fee_coin = "GLA";
+					buy_fee_amount = buy_fee_amount * m_price_base_asset_GLA;
+					LOG(INFO) << "buy_fee_amount:"  << buy_fee_amount;
+				}else{
+					LOG(INFO) << "=============== buy_user"  << "not GLA member";
+					return false;
+				}
+			}
+
+			if(m_order_quote_asset != "GLA"){
+				if (m_user_account[sell_user]["funds"].isMember("GLA")){
+					sell_fee_coin = "GLA";
+					sell_fee_amount = sell_fee_amount * m_price_quote_asset_GLA;
+					LOG(INFO) << "sell_fee_amount:"  << sell_fee_amount;
+				}else{
+					LOG(INFO) << "===============sell_user "  << "not GLA member";
+					return false;
+				}
+			}	
+		}else{
+			if (m_user_account[buy_user]["funds"].isMember("MMC")){
+				buy_fee_coin = "MMC";
+				buy_fee_amount = buy_fee_amount * m_price_base_asset_MMC;
+				LOG(INFO) << " MMC buy_fee_amount:"  << buy_fee_amount;
+			}
+
+			if (m_user_account[sell_user]["funds"].isMember("MMC")){
+				sell_fee_coin = "MMC";
+				sell_fee_amount = sell_fee_amount * m_price_quote_asset_MMC;
+				LOG(INFO) << "MMC  sell_fee_amount:"  << sell_fee_amount;
 			}
 		}
-
-		if(m_order_quote_asset != "GLA"){
-			if (m_user_account[sell_user]["funds"].isMember("GLA")){
-				sell_fee_coin = "GLA";
-				sell_fee_amount = sell_fee_amount * m_price_quote_asset_GLA;
-				LOG(INFO) << "sell_fee_amount:"  << sell_fee_amount;
-			}else{
-				LOG(INFO) << "===============sell_user "  << "not GLA member";
-				return false;
-			}
-		}
-
 
 		if(isnan(buy_fee_amount)){
 			LOG(ERROR) << "=============buy_fee_amount  is  nan==========";
@@ -1704,10 +1750,18 @@ bool Match::SettleTrade(){
 		tmp_obj["asset"] = buy_fee_coin;
 		tmp_obj["change_available"] = switch_f_to_s(-buy_fee_amount);
 		//GLA 不够
-		if (switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount < 0)
-		{
-			LOG(INFO) << "===============买方GLA不够============= " ;
-			return false;
+		if(m_is_subscribe != 1){
+			if (switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount < 0)
+			{
+				LOG(INFO) << "===============买方GLA不够============= " ;
+				return false;
+			}
+		}else{
+			if (switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount < 0)
+			{
+				LOG(INFO) << "===============买方MMC不够============= " ;
+				return false;
+			}
 		}
 		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[buy_user]["funds"][buy_fee_coin]["available"].asString()) - buy_fee_amount);
 		tmp_obj["change_frozen"] = switch_f_to_s(0);
@@ -1736,10 +1790,18 @@ bool Match::SettleTrade(){
 		tmp_obj["asset"] = sell_fee_coin;
 		tmp_obj["change_available"] = switch_f_to_s(-sell_fee_amount);
 		//GLA 不够
-		if (switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount < 0)
-		{
-			LOG(INFO) << "===============卖方GLA不够============= " ;
-			return false;
+		if(m_is_subscribe != 1){
+			if (switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount < 0)
+			{
+				LOG(INFO) << "===============卖方GLA不够============= " ;
+				return false;
+			}
+		}else{
+			if (switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount < 0)
+			{
+				LOG(INFO) << "===============卖方MMC不够============= " ;
+				return false;
+			}
 		}
 		tmp_obj["new_available"] = switch_f_to_s(switch_s_to_f(m_user_account[sell_user]["funds"][sell_fee_coin]["available"].asString()) - sell_fee_amount);;
 		tmp_obj["change_frozen"] = switch_f_to_s(0);

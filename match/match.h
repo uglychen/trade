@@ -120,6 +120,9 @@ class Match {
 		
 		long double	m_price_base_asset_GLA; ////base_asset/GLA价格
 		long double	m_price_quote_asset_GLA;
+		
+		long double	m_price_base_asset_MMC; ////base_asset/GLA价格
+		long double	m_price_quote_asset_MMC;
 
 		long double	m_remain_amount;							//当前订单剩余数量（未达成交易）
 		long double	m_executed_quote_amount;					//当前订单成交额
